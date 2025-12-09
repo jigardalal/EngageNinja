@@ -192,6 +192,26 @@ export class TenantsService {
     await this.ensureMembership(userId, tenantId);
     await this.ensureAdminOrOwner(userId, tenantId);
 
+    // Check plan limits before allowing invite
+    const tenant = await this.loadTenantWithSettings(tenantId);
+    const planTier = planTierFromValue(tenant.settings?.planTier || 'starter');
+    const memberLimit = tenantLimitForPlan(planTier, this.configService);
+
+    // Count only ACCEPTED members (pending invites do not count toward the limit)
+    const acceptedCount = await this.prisma.tenantMember.count({
+      where: { tenantId, status: 'accepted' },
+    });
+
+    if (acceptedCount >= memberLimit) {
+      throw new HttpException(
+        {
+          code: 'MEMBER_LIMIT_REACHED',
+          message: `Plan tier ${planTier} allows only ${memberLimit} member${memberLimit === 1 ? '' : 's'}`,
+        },
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
     const inviteToken = randomBytes(32).toString('hex');
 
     const existingMember = await this.prisma.tenantMember.findFirst({

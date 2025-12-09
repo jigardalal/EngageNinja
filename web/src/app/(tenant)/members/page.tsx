@@ -145,11 +145,38 @@ export default function MembersPage() {
       <div className="mb-8 p-6 border rounded-lg bg-white">
         <h2 className="text-xl font-semibold mb-4">Invite Team Member</h2>
 
-        {/* Guardrail Messages */}
+        {/* Guardrail Messages with Remediation */}
         {inviteDisabledReason && (
-          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="text-sm text-amber-800">
-              <span className="font-semibold">Plan Limit Reached:</span> {inviteDisabledReason}
+          <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 text-amber-600 text-lg">⚠️</div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-900 mb-1">
+                  Member Limit Reached
+                </p>
+                <p className="text-sm text-amber-800 mb-2">
+                  Your {planLabels[planTier]} plan allows {tenantLimit} team {tenantLimit === 1 ? 'member' : 'members'}.
+                  You've added {acceptedMembers} {acceptedMembers === 1 ? 'member' : 'members'}.
+                </p>
+                <div className="text-sm text-amber-800">
+                  <p className="font-medium mb-1">Next steps to invite more members:</p>
+                  <ul className="list-disc list-inside space-y-1 ml-2">
+                    <li>Upgrade to Growth plan (5 members) or Agency plan (25 members)</li>
+                    <li>Remove an existing member to free up a slot</li>
+                    <li>Contact support if you need a custom plan</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Hero Loop Context */}
+        {!inviteDisabledReason && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <span className="font-semibold">Invite team members</span> to collaborate on campaigns.
+              They'll receive an email invitation and can accept to join your workspace.
             </p>
           </div>
         )}

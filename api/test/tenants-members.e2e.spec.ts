@@ -383,4 +383,185 @@ describe('Tenant Members (e2e)', () => {
       });
     });
   });
+
+  describe('Plan Limit Enforcement', () => {
+    it('blocks invite when member limit reached for Starter plan', async () => {
+      // Create a Starter tenant (limit = 1 member)
+      const starterUser = await prisma.user.create({
+        data: { email: 'starter@test.com', passwordHash: 'hash', planTier: 'starter' },
+      });
+
+      const starterTenant = await prisma.tenant.create({
+        data: { name: 'Starter Tenant' },
+      });
+
+      await prisma.tenantSetting.create({
+        data: { tenantId: starterTenant.id, planTier: 'starter', region: 'us-east-1' },
+      });
+
+      await prisma.userTenant.create({
+        data: {
+          userId: starterUser.id,
+          tenantId: starterTenant.id,
+          role: 'owner',
+          lastActiveAt: new Date(),
+        },
+      });
+
+      // Create and accept first member (reaches limit)
+      await prisma.tenantMember.create({
+        data: {
+          tenantId: starterTenant.id,
+          email: 'member1@test.com',
+          role: 'marketer',
+          status: 'accepted',
+          invitedBy: starterUser.id,
+        },
+      });
+
+      const starterToken = jwtService.sign({
+        userId: starterUser.id,
+        email: starterUser.email,
+        tenantId: starterTenant.id,
+        activeTenantId: starterTenant.id,
+        planTier: 'starter',
+        capabilityFlags: [],
+      });
+
+      // Try to invite second member - should fail
+      const response = await request(app.getHttpServer())
+        .post(`/tenants/${starterTenant.id}/members/invite`)
+        .set('Authorization', `Bearer ${starterToken}`)
+        .send({
+          email: 'member2@test.com',
+          role: 'marketer',
+        })
+        .expect(HttpStatus.FORBIDDEN);
+
+      expect(response.body.error?.code).toBe('MEMBER_LIMIT_REACHED');
+      expect(response.body.error?.message).toContain('1 member');
+    });
+
+    it('allows invite when pending members exist but do not count toward limit', async () => {
+      // Starter tenant with 1 pending invite should still allow invites
+      const starterUser = await prisma.user.create({
+        data: { email: 'starter2@test.com', passwordHash: 'hash', planTier: 'starter' },
+      });
+
+      const starterTenant = await prisma.tenant.create({
+        data: { name: 'Starter Tenant 2' },
+      });
+
+      await prisma.tenantSetting.create({
+        data: { tenantId: starterTenant.id, planTier: 'starter', region: 'us-east-1' },
+      });
+
+      await prisma.userTenant.create({
+        data: {
+          userId: starterUser.id,
+          tenantId: starterTenant.id,
+          role: 'owner',
+          lastActiveAt: new Date(),
+        },
+      });
+
+      // Create pending invite (does NOT count toward limit)
+      await prisma.tenantMember.create({
+        data: {
+          tenantId: starterTenant.id,
+          email: 'pending@test.com',
+          role: 'marketer',
+          status: 'pending',
+          invitedBy: starterUser.id,
+        },
+      });
+
+      const starterToken = jwtService.sign({
+        userId: starterUser.id,
+        email: starterUser.email,
+        tenantId: starterTenant.id,
+        activeTenantId: starterTenant.id,
+        planTier: 'starter',
+        capabilityFlags: [],
+      });
+
+      // Should succeed because pending doesn't count
+      await request(app.getHttpServer())
+        .post(`/tenants/${starterTenant.id}/members/invite`)
+        .set('Authorization', `Bearer ${starterToken}`)
+        .send({
+          email: 'newmember@test.com',
+          role: 'marketer',
+        })
+        .expect(HttpStatus.CREATED);
+    });
+
+    it('allows Growth plan to invite up to 5 members', async () => {
+      // Create Growth tenant and add 4 accepted members, 5th should succeed
+      const growthUser = await prisma.user.create({
+        data: { email: 'growth@test.com', passwordHash: 'hash', planTier: 'growth' },
+      });
+
+      const growthTenant = await prisma.tenant.create({
+        data: { name: 'Growth Tenant' },
+      });
+
+      await prisma.tenantSetting.create({
+        data: { tenantId: growthTenant.id, planTier: 'growth', region: 'us-east-1' },
+      });
+
+      await prisma.userTenant.create({
+        data: {
+          userId: growthUser.id,
+          tenantId: growthTenant.id,
+          role: 'owner',
+          lastActiveAt: new Date(),
+        },
+      });
+
+      // Add 4 accepted members
+      for (let i = 1; i <= 4; i++) {
+        await prisma.tenantMember.create({
+          data: {
+            tenantId: growthTenant.id,
+            email: `member${i}@test.com`,
+            role: 'marketer',
+            status: 'accepted',
+            invitedBy: growthUser.id,
+          },
+        });
+      }
+
+      const growthToken = jwtService.sign({
+        userId: growthUser.id,
+        email: growthUser.email,
+        tenantId: growthTenant.id,
+        activeTenantId: growthTenant.id,
+        planTier: 'growth',
+        capabilityFlags: [],
+      });
+
+      // 5th member should succeed (Growth limit = 5)
+      await request(app.getHttpServer())
+        .post(`/tenants/${growthTenant.id}/members/invite`)
+        .set('Authorization', `Bearer ${growthToken}`)
+        .send({
+          email: 'member5@test.com',
+          role: 'marketer',
+        })
+        .expect(HttpStatus.CREATED);
+
+      // 6th member should fail
+      const response = await request(app.getHttpServer())
+        .post(`/tenants/${growthTenant.id}/members/invite`)
+        .set('Authorization', `Bearer ${growthToken}`)
+        .send({
+          email: 'member6@test.com',
+          role: 'marketer',
+        })
+        .expect(HttpStatus.FORBIDDEN);
+
+      expect(response.body.error?.code).toBe('MEMBER_LIMIT_REACHED');
+    });
+  });
 });
