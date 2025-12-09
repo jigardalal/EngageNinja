@@ -1,0 +1,14 @@
+# Workflow status tracking for BMAD workflows
+workflow_status:
+  product-brief:
+    path: docs/analysis/product-brief-EngageNinja-2025-12-08.md
+    completed_at: 2025-12-08T19:49:00Z
+  prd:
+    path: docs/prd.md
+    completed_at: 2025-12-08T20:36:15Z
+  ux-design:
+    path: docs/ux-design-specification.md
+    completed_at: 2025-12-08T21:16:04Z
+  create-architecture:
+    path: docs/architecture.md
+    completed_at: 2025-12-08T22:11:16Z

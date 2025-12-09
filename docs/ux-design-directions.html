@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EngageNinja – UX Design Directions</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --muted: #9ca3af;
+      --accent: #22c55e;
+      --accent-2: #0ea5e9;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --border: #1f2937;
+      --shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+      --radius: 14px;
+      --font: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: linear-gradient(135deg, #0b1224 0%, #0c182f 100%);
+      color: #e5e7eb;
+      padding: 32px;
+    }
+    h1 { margin: 0 0 16px; font-size: 24px; letter-spacing: -0.02em; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+      background: rgba(34, 197, 94, 0.1);
+      color: #bbf7d0;
+      border: 1px solid rgba(34, 197, 94, 0.35);
+    }
+    ul { margin: 0; padding-left: 16px; color: var(--muted); }
+    .tag {
+      display: inline-flex;
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-size: 12px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #e5e7eb;
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  </style>
+</head>
+<body>
+  <h1>EngageNinja – Design Directions</h1>
+  <div class="grid">
+    <div class="card">
+      <div class="pill">Direction A · Clarity & Uplift</div>
+      <p>Minimal, high-contrast surfaces that spotlight the hero loop: Send → Resend → Prove uplift. Live delivery/read ticks and uplift snapshots are always visible.</p>
+      <div class="row">
+        <span class="tag">Live status chips</span><span class="tag">One-click resend</span><span class="tag">Inline reasons</span>
+      </div>
+      <ul>
+        <li>Dashboard hero: uplift card, resend-ready card, WA health.</li>
+        <li>Campaign row: statuses, resend CTA, uplift delta in-line.</li>
+        <li>Banners for impersonation/support with clear exit.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="pill" style="background: rgba(14,165,233,0.12); border-color: rgba(14,165,233,0.35); color:#bae6fd;">Direction B · Agency Ops</div>
+      <p>Ops-first dashboard with tenant switcher, ROI per tenant, and checklists for onboarding. More data-dense tables and role clarity cues.</p>
+      <div class="row">
+        <span class="tag">Tenant switcher</span><span class="tag">ROI per tenant</span><span class="tag">Checklist home</span>
+      </div>
+      <ul>
+        <li>Global bar: tenant switcher + impersonation banner.</li>
+        <li>Per-tenant cards: sends, reads, resend usage, trends.</li>
+        <li>Checklist panel driving Connect → Import → Send → Resend.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="pill" style="background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.35); color:#fde68a;">Direction C · Guided Launch</div>
+      <p>Wizard-like guidance with inline mapping and preflight safety rails. Friendly microcopy emphasizes “you’re safe to send”.</p>
+      <div class="row">
+        <span class="tag">Preflight checklist</span><span class="tag">Inline mapping</span><span class="tag">Guided resend</span>
+      </div>
+      <ul>
+        <li>3-step linear flow with visible progress: Audience → Template/Variables → Review & Send.</li>
+        <li>Preflight cards showing approvals/consent/recipients; send button states.</li>
+        <li>Resend card with countdown and ready state.</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>
