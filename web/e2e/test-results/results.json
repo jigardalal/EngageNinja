@@ -93,12 +93,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 875,
+                      "duration": 658,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-12-09T21:57:06.463Z",
+                      "startTime": "2025-12-09T22:08:13.817Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -127,12 +127,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 494,
+                      "duration": 487,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-12-09T21:57:07.652Z",
+                      "startTime": "2025-12-09T22:08:14.704Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -161,12 +161,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 460,
+                      "duration": 458,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-12-09T21:57:08.152Z",
+                      "startTime": "2025-12-09T22:08:15.195Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -195,12 +195,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 373,
+                      "duration": 368,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-12-09T21:57:08.618Z",
+                      "startTime": "2025-12-09T22:08:15.657Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -229,12 +229,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 248,
+                      "duration": 241,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-12-09T21:57:08.994Z",
+                      "startTime": "2025-12-09T22:08:16.028Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -294,7 +294,7 @@
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-12-09T21:57:09.247Z",
+                      "startTime": "2025-12-09T22:08:16.275Z",
                       "annotations": [
                         {
                           "type": "skip",
@@ -346,7 +346,7 @@
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-12-09T21:57:09.247Z",
+                      "startTime": "2025-12-09T22:08:16.275Z",
                       "annotations": [
                         {
                           "type": "skip",
@@ -382,12 +382,12 @@
         {
           "title": "Multi-Tenant Switching",
           "file": "tenant-switching.spec.ts",
-          "line": 8,
+          "line": 7,
           "column": 6,
           "specs": [
             {
               "title": "should switch between multiple tenants",
-              "ok": false,
+              "ok": true,
               "tags": [],
               "tests": [
                 {
@@ -400,70 +400,27 @@
                     {
                       "workerIndex": 0,
                       "parallelIndex": 0,
-                      "status": "failed",
-                      "duration": 7171,
-                      "error": {
-                        "message": "Error: No tenant card found with name \"Test Tenant 1\"",
-                        "stack": "Error: No tenant card found with name \"Test Tenant 1\"\n    at SelectTenantPage.expectTenantInList (/Users/jigs/Code/EngageNinja/web/e2e/page-objects/select-tenant.page.ts:64:13)\n    at /Users/jigs/Code/EngageNinja/web/e2e/tests/tenant-switching.spec.ts:25:5",
-                        "location": {
-                          "file": "/Users/jigs/Code/EngageNinja/web/e2e/page-objects/select-tenant.page.ts",
-                          "column": 13,
-                          "line": 64
-                        },
-                        "snippet": "\u001b[90m   at \u001b[39m../page-objects/select-tenant.page.ts:64\n\n  62 |     const count = await articles.count();\n  63 |     if (count === 0) {\n> 64 |       throw new Error(`No tenant card found with name \"${tenantName}\"`);\n     |             ^\n  65 |     }\n  66 |\n  67 |     // For multiple matches, find the one that's in the tenants list (not the form)"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "/Users/jigs/Code/EngageNinja/web/e2e/page-objects/select-tenant.page.ts",
-                            "column": 13,
-                            "line": 64
-                          },
-                          "message": "Error: No tenant card found with name \"Test Tenant 1\"\n\n   at ../page-objects/select-tenant.page.ts:64\n\n  62 |     const count = await articles.count();\n  63 |     if (count === 0) {\n> 64 |       throw new Error(`No tenant card found with name \"${tenantName}\"`);\n     |             ^\n  65 |     }\n  66 |\n  67 |     // For multiple matches, find the one that's in the tenants list (not the form)\n    at SelectTenantPage.expectTenantInList (/Users/jigs/Code/EngageNinja/web/e2e/page-objects/select-tenant.page.ts:64:13)\n    at /Users/jigs/Code/EngageNinja/web/e2e/tests/tenant-switching.spec.ts:25:5"
-                        }
-                      ],
+                      "status": "passed",
+                      "duration": 558,
+                      "errors": [],
                       "stdout": [
                         {
-                          "text": "[Auth] Login succeeded, navigated to http://localhost:3001/dashboard?tenantId=7553cd11-cf35-4a4d-9d3e-05d9515794eb\n"
-                        },
-                        {
-                          "text": "[Auth] No current user API call detected, but login was successful\n"
+                          "text": "Created user with \u001b[33m2\u001b[39m tenants\n"
                         }
                       ],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-12-09T21:57:09.249Z",
+                      "startTime": "2025-12-09T22:08:16.277Z",
                       "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "/Users/jigs/Code/EngageNinja/web/test-results/tenant-switching-Multi-Ten-3a7e8-ch-between-multiple-tenants-chromium/test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "/Users/jigs/Code/EngageNinja/web/test-results/tenant-switching-Multi-Ten-3a7e8-ch-between-multiple-tenants-chromium/video.webm"
-                        },
-                        {
-                          "name": "error-context",
-                          "contentType": "text/markdown",
-                          "path": "/Users/jigs/Code/EngageNinja/web/test-results/tenant-switching-Multi-Ten-3a7e8-ch-between-multiple-tenants-chromium/error-context.md"
-                        }
-                      ],
-                      "errorLocation": {
-                        "file": "/Users/jigs/Code/EngageNinja/web/e2e/page-objects/select-tenant.page.ts",
-                        "column": 13,
-                        "line": 64
-                      }
+                      "attachments": []
                     }
                   ],
-                  "status": "unexpected"
+                  "status": "expected"
                 }
               ],
               "id": "0e53007d46108c0e8a9d-b36f5278d6dcb74c4b86",
               "file": "tenant-switching.spec.ts",
-              "line": 13,
+              "line": 12,
               "column": 7
             },
             {
@@ -479,45 +436,34 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 1,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "failed",
-                      "duration": 17259,
+                      "duration": 10554,
                       "error": {
-                        "message": "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /create tenant/i }) to be visible\u001b[22m\n",
-                        "stack": "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /create tenant/i }) to be visible\u001b[22m\n\n    at SelectTenantPage.createTenant (/Users/jigs/Code/EngageNinja/web/e2e/page-objects/select-tenant.page.ts:41:31)\n    at /Users/jigs/Code/EngageNinja/web/e2e/tests/tenant-switching.spec.ts:39:28",
+                        "message": "TimeoutError: locator.scrollIntoViewIfNeeded: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /create tenant/i })\u001b[22m\n",
+                        "stack": "TimeoutError: locator.scrollIntoViewIfNeeded: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /create tenant/i })\u001b[22m\n\n    at SelectTenantPage.createTenant (/Users/jigs/Code/EngageNinja/web/e2e/page-objects/select-tenant.page.ts:42:29)\n    at /Users/jigs/Code/EngageNinja/web/e2e/tests/tenant-switching.spec.ts:51:5",
                         "location": {
                           "file": "/Users/jigs/Code/EngageNinja/web/e2e/page-objects/select-tenant.page.ts",
-                          "column": 31,
-                          "line": 41
+                          "column": 29,
+                          "line": 42
                         },
-                        "snippet": "\u001b[90m   at \u001b[39m../page-objects/select-tenant.page.ts:41\n\n  39 |     try {\n  40 |       // Wait for button to be enabled (indicates form is interactive)\n> 41 |       await this.createButton.waitFor({ state: 'visible', timeout: 10000 });\n     |                               ^\n  42 |       // Fill the form\n  43 |       const nameInput = this.page.getByPlaceholder('Acme Operations');\n  44 |       await nameInput.fill(name);"
+                        "snippet": "\u001b[90m   at \u001b[39m../page-objects/select-tenant.page.ts:42\n\n  40 |\n  41 |     // Scroll the button into view\n> 42 |     await this.createButton.scrollIntoViewIfNeeded();\n     |                             ^\n  43 |\n  44 |     // Click the button\n  45 |     await this.createButton.click();"
                       },
                       "errors": [
                         {
                           "location": {
                             "file": "/Users/jigs/Code/EngageNinja/web/e2e/page-objects/select-tenant.page.ts",
-                            "column": 31,
-                            "line": 41
+                            "column": 29,
+                            "line": 42
                           },
-                          "message": "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /create tenant/i }) to be visible\u001b[22m\n\n\n   at ../page-objects/select-tenant.page.ts:41\n\n  39 |     try {\n  40 |       // Wait for button to be enabled (indicates form is interactive)\n> 41 |       await this.createButton.waitFor({ state: 'visible', timeout: 10000 });\n     |                               ^\n  42 |       // Fill the form\n  43 |       const nameInput = this.page.getByPlaceholder('Acme Operations');\n  44 |       await nameInput.fill(name);\n    at SelectTenantPage.createTenant (/Users/jigs/Code/EngageNinja/web/e2e/page-objects/select-tenant.page.ts:41:31)\n    at /Users/jigs/Code/EngageNinja/web/e2e/tests/tenant-switching.spec.ts:39:28"
+                          "message": "TimeoutError: locator.scrollIntoViewIfNeeded: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /create tenant/i })\u001b[22m\n\n\n   at ../page-objects/select-tenant.page.ts:42\n\n  40 |\n  41 |     // Scroll the button into view\n> 42 |     await this.createButton.scrollIntoViewIfNeeded();\n     |                             ^\n  43 |\n  44 |     // Click the button\n  45 |     await this.createButton.click();\n    at SelectTenantPage.createTenant (/Users/jigs/Code/EngageNinja/web/e2e/page-objects/select-tenant.page.ts:42:29)\n    at /Users/jigs/Code/EngageNinja/web/e2e/tests/tenant-switching.spec.ts:51:5"
                         }
                       ],
-                      "stdout": [
-                        {
-                          "text": "[Auth] Login succeeded, navigated to http://localhost:3001/dashboard?tenantId=9d7e6d7e-4ba4-48a1-bf30-87dba991faed\n"
-                        },
-                        {
-                          "text": "[Auth] No current user API call detected, but login was successful\n"
-                        }
-                      ],
-                      "stderr": [
-                        {
-                          "text": "[SelectTenant] Failed to create tenant: locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /create tenant/i }) to be visible\u001b[22m\n\n"
-                        }
-                      ],
+                      "stdout": [],
+                      "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-12-09T21:57:16.688Z",
+                      "startTime": "2025-12-09T22:08:16.839Z",
                       "annotations": [],
                       "attachments": [
                         {
@@ -538,8 +484,8 @@
                       ],
                       "errorLocation": {
                         "file": "/Users/jigs/Code/EngageNinja/web/e2e/page-objects/select-tenant.page.ts",
-                        "column": 31,
-                        "line": 41
+                        "column": 29,
+                        "line": 42
                       }
                     }
                   ],
@@ -548,7 +494,7 @@
               ],
               "id": "0e53007d46108c0e8a9d-0b342acdae7d19c758e2",
               "file": "tenant-switching.spec.ts",
-              "line": 29,
+              "line": 33,
               "column": 7
             },
             {
@@ -564,22 +510,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 17278,
+                      "duration": 10721,
                       "errors": [],
-                      "stdout": [
-                        {
-                          "text": "[Auth] Login succeeded, navigated to http://localhost:3001/dashboard?tenantId=7385ccc8-66db-4987-b888-0558ba20aafb\n"
-                        },
-                        {
-                          "text": "[Auth] No current user API call detected, but login was successful\n"
-                        }
-                      ],
+                      "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-12-09T21:57:34.381Z",
+                      "startTime": "2025-12-09T22:08:27.667Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -589,7 +528,7 @@
               ],
               "id": "0e53007d46108c0e8a9d-62f5bafc643c5631611c",
               "file": "tenant-switching.spec.ts",
-              "line": 45,
+              "line": 57,
               "column": 7
             },
             {
@@ -605,34 +544,34 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "failed",
-                      "duration": 10630,
+                      "duration": 10608,
                       "error": {
                         "message": "TimeoutError: page.waitForURL: Timeout 10000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================",
-                        "stack": "TimeoutError: page.waitForURL: Timeout 10000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================\n    at /Users/jigs/Code/EngageNinja/web/e2e/tests/tenant-switching.spec.ts:72:16",
+                        "stack": "TimeoutError: page.waitForURL: Timeout 10000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================\n    at /Users/jigs/Code/EngageNinja/web/e2e/tests/tenant-switching.spec.ts:94:16",
                         "location": {
                           "file": "/Users/jigs/Code/EngageNinja/web/e2e/tests/tenant-switching.spec.ts",
                           "column": 16,
-                          "line": 72
+                          "line": 94
                         },
-                        "snippet": "  70 |\n  71 |     // Assert: Redirected to select-tenant (middleware behavior)\n> 72 |     await page.waitForURL(/\\/select-tenant/, { timeout: 10000 });\n     |                ^\n  73 |   });\n  74 | });\n  75 |"
+                        "snippet": "  92 |\n  93 |     // Assert: Redirected to select-tenant (middleware behavior)\n> 94 |     await page.waitForURL(/\\/select-tenant/, { timeout: 10000 });\n     |                ^\n  95 |   });\n  96 | });\n  97 |"
                       },
                       "errors": [
                         {
                           "location": {
                             "file": "/Users/jigs/Code/EngageNinja/web/e2e/tests/tenant-switching.spec.ts",
                             "column": 16,
-                            "line": 72
+                            "line": 94
                           },
-                          "message": "TimeoutError: page.waitForURL: Timeout 10000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================\n\n  70 |\n  71 |     // Assert: Redirected to select-tenant (middleware behavior)\n> 72 |     await page.waitForURL(/\\/select-tenant/, { timeout: 10000 });\n     |                ^\n  73 |   });\n  74 | });\n  75 |\n    at /Users/jigs/Code/EngageNinja/web/e2e/tests/tenant-switching.spec.ts:72:16"
+                          "message": "TimeoutError: page.waitForURL: Timeout 10000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================\n\n  92 |\n  93 |     // Assert: Redirected to select-tenant (middleware behavior)\n> 94 |     await page.waitForURL(/\\/select-tenant/, { timeout: 10000 });\n     |                ^\n  95 |   });\n  96 | });\n  97 |\n    at /Users/jigs/Code/EngageNinja/web/e2e/tests/tenant-switching.spec.ts:94:16"
                         }
                       ],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-12-09T21:57:51.764Z",
+                      "startTime": "2025-12-09T22:08:38.489Z",
                       "annotations": [],
                       "attachments": [
                         {
@@ -654,7 +593,7 @@
                       "errorLocation": {
                         "file": "/Users/jigs/Code/EngageNinja/web/e2e/tests/tenant-switching.spec.ts",
                         "column": 16,
-                        "line": 72
+                        "line": 94
                       }
                     }
                   ],
@@ -663,7 +602,7 @@
               ],
               "id": "0e53007d46108c0e8a9d-f16476ebc588ca687735",
               "file": "tenant-switching.spec.ts",
-              "line": 63,
+              "line": 83,
               "column": 7
             }
           ]
@@ -673,11 +612,11 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2025-12-09T21:57:06.047Z",
-    "duration": 56371.623,
-    "expected": 6,
+    "startTime": "2025-12-09T22:08:13.447Z",
+    "duration": 35678.424999999996,
+    "expected": 7,
     "skipped": 2,
-    "unexpected": 3,
+    "unexpected": 2,
     "flaky": 0
   }
 }

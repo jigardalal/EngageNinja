@@ -1,7 +1,7 @@
 # Page snapshot
 
 ```yaml
-- generic [active] [ref=e1]:
+- generic [ref=e1]:
   - generic [ref=e2]:
     - banner [ref=e3]:
       - generic [ref=e4]:
@@ -46,7 +46,7 @@
             - heading "Create a tenant" [level=3] [ref=e43]
             - generic [ref=e44]:
               - text: Workspace name
-              - textbox "Acme Operations" [ref=e45]
+              - textbox "Acme Operations" [active] [ref=e45]: Brand New Tenant 1765318097310
             - generic [ref=e46]:
               - text: Region
               - textbox "us-east-1" [ref=e47]

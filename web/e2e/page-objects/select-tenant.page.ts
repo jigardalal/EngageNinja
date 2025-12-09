@@ -34,19 +34,15 @@ export class SelectTenantPage extends BasePage {
   }
 
   async createTenant(name: string) {
-    // First check if we can interact with the form
-    // Try multiple ways to get the input to be safe
-    try {
-      // Wait for button to be enabled (indicates form is interactive)
-      await this.createButton.waitFor({ state: 'visible', timeout: 10000 });
-      // Fill the form
-      const nameInput = this.page.getByPlaceholder('Acme Operations');
-      await nameInput.fill(name);
-      await this.createButton.click();
-    } catch (error) {
-      console.error('[SelectTenant] Failed to create tenant:', error.message);
-      throw error;
-    }
+    // Fill the form with the tenant name
+    const nameInput = this.page.getByPlaceholder('Acme Operations');
+    await nameInput.fill(name);
+
+    // Scroll the button into view
+    await this.createButton.scrollIntoViewIfNeeded();
+
+    // Click the button
+    await this.createButton.click();
   }
 
   async getTenantCards() {
