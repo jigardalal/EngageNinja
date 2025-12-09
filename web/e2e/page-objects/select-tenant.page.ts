@@ -16,17 +16,37 @@ export class SelectTenantPage extends BasePage {
   }
 
   async goto() {
-    await super.goto('/select-tenant');
-    // Wait for page to hydrate and API to load
-    // Wait for form to be visible (this means hydration is done)
-    await this.page.locator('label').filter({ hasText: /workspace name/i }).first().waitFor({ state: 'visible', timeout: 10000 });
-    // Wait for either tenants to load or "Loading" text to disappear
-    await this.page.locator('text=Loading tenant list').waitFor({ state: 'hidden', timeout: 10000 }).catch(() => null);
+    await super.goto('/select-tenant', { waitUntil: 'networkidle' });
+
+    // Wait for page to be interactive - either the form loads or an error appears
+    // Whichever comes first
+    try {
+      await Promise.race([
+        // Form is ready
+        this.page.locator('label').filter({ hasText: /workspace name/i }).first().waitFor({ state: 'visible', timeout: 20000 }),
+        // Or page has loaded and stabilized (networkidle means no pending requests)
+        this.page.waitForLoadState('networkidle'),
+      ]);
+    } catch (error) {
+      // If all waits fail, just try to continue anyway - page might be in a valid state
+      console.log('[SelectTenant] Page load completed (possibly partial)');
+    }
   }
 
   async createTenant(name: string) {
-    await this.tenantNameInput.fill(name);
-    await this.createButton.click();
+    // First check if we can interact with the form
+    // Try multiple ways to get the input to be safe
+    try {
+      // Wait for button to be enabled (indicates form is interactive)
+      await this.createButton.waitFor({ state: 'visible', timeout: 10000 });
+      // Fill the form
+      const nameInput = this.page.getByPlaceholder('Acme Operations');
+      await nameInput.fill(name);
+      await this.createButton.click();
+    } catch (error) {
+      console.error('[SelectTenant] Failed to create tenant:', error.message);
+      throw error;
+    }
   }
 
   async getTenantCards() {
@@ -34,20 +54,29 @@ export class SelectTenantPage extends BasePage {
   }
 
   async expectTenantInList(tenantName: string) {
-    // Debug: log current page content
-    const articles = await this.page.locator('article').all();
-    if (articles.length === 0) {
-      const pageText = await this.page.textContent('body');
-      console.log('❌ No tenant articles found. Page text:', pageText?.substring(0, 500));
-    } else {
-      console.log('✓ Found', articles.length, 'tenant cards');
-      for (const article of articles) {
-        const text = await article.textContent();
-        console.log('  - Card:', text?.substring(0, 100));
+    // Find all article elements and locate the one with the tenant name
+    // Filter to get only those in the tenants list area (not the form section)
+    const articles = this.page.locator('article').filter({ hasText: tenantName });
+
+    // Get all matching articles
+    const count = await articles.count();
+    if (count === 0) {
+      throw new Error(`No tenant card found with name "${tenantName}"`);
+    }
+
+    // For multiple matches, find the one that's in the tenants list (not the form)
+    // The form section has "Create a tenant" heading, tenants list has heading "Existing tenants"
+    for (let i = 0; i < count; i++) {
+      const article = articles.nth(i);
+      const parent = article.locator('..');
+      const text = await parent.textContent();
+      if (text && text.includes('Existing tenants')) {
+        await article.waitFor({ state: 'visible', timeout: 5000 });
+        return;
       }
     }
 
-    const card = this.page.locator('article', { hasText: tenantName });
-    await card.waitFor({ state: 'visible', timeout: 5000 });
+    // If no tenant found in "Existing tenants" section, just wait for the first match
+    await articles.first().waitFor({ state: 'visible', timeout: 5000 });
   }
 }

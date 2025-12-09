@@ -1,68 +1,40 @@
-import { test, expect } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { cleanDatabase } from '../utils/db.util';
+import { test } from '../fixtures/auth.fixture';
 import { TestDataFactory } from '../fixtures/test-data.factory';
-import { LoginPage } from '../page-objects/login.page';
 import { SelectTenantPage } from '../page-objects/select-tenant.page';
-import { DashboardPage } from '../page-objects/dashboard.page';
+import { LoginPage } from '../page-objects/login.page';
 
 test.describe('Multi-Tenant Switching', () => {
-  let factory: TestDataFactory;
-
   test.beforeEach(async () => {
     await cleanDatabase();
-    factory = new TestDataFactory();
   });
 
-  test('should switch between multiple tenants', async ({ page }) => {
-    // Arrange: User with 2 tenants
-    const { user, tenants } = await factory.createUserWithMultipleTenants(2);
-    console.log('Created user:', user.id, 'with tenants:', tenants.map(t => t.id));
+  test('should switch between multiple tenants', async ({ authenticatedPage, testData }) => {
+    // Arrange: Create second tenant for the authenticated user
+    const factory = new TestDataFactory();
+    const secondTenant = await factory.createTenantForUser(testData.user.id, 'owner');
 
-    // Intercept API calls for debugging
-    page.on('response', response => {
-      if (response.url().includes('/tenants')) {
-        response.json().then(data => {
-          console.log('GET /tenants response:', data);
-        }).catch(() => {});
-      }
-    });
-
-    // Act: Login
-    const loginPage = new LoginPage(page);
-    await loginPage.goto();
-    await loginPage.login(user.email, user.password);
-    await page.waitForURL(/\/dashboard/, { timeout: 10000 });
-
-    // Assert: Verify first tenant context
-    const dashboard = new DashboardPage(page);
-    await dashboard.expectVisible();
-    expect(page.url()).toContain(tenants[0].id);
-
-    // Act: Switch to tenant selector
-    // Wait a bit for dashboard to fully render and set auth state
-    await page.waitForTimeout(500);
-    const selectTenantPage = new SelectTenantPage(page);
+    // Act: Use authenticated page (pre-authenticated with fixture)
+    // Give the page a moment to settle after login before navigating
+    await authenticatedPage.waitForTimeout(500);
+    const selectTenantPage = new SelectTenantPage(authenticatedPage);
     await selectTenantPage.goto();
 
-    // Assert: Both tenants visible
-    await selectTenantPage.expectTenantInList(tenants[0].name);
-    await selectTenantPage.expectTenantInList(tenants[1].name);
+    // Assert: Both tenants visible in list
+    await selectTenantPage.expectTenantInList(testData.tenant.name);
+    await selectTenantPage.expectTenantInList(secondTenant.name);
   });
 
-  test('should create new tenant and see it in list', async ({ page }) => {
-    // Arrange: User with one tenant
-    const { user, tenant } = await factory.createUserWithTenant('owner');
+  test('should create new tenant and see it in list', async ({ growthPlanPage }) => {
+    // Arrange: Using growth plan user (limit: 5 tenants, 1 already exists)
 
-    // Act: Login and go to select tenant
-    const loginPage = new LoginPage(page);
-    await loginPage.goto();
-    await loginPage.login(user.email, user.password);
-    await page.waitForURL(/\/dashboard/, { timeout: 10000 });
-
-    const selectTenantPage = new SelectTenantPage(page);
+    // Act: Go to select tenant and create new tenant
+    // Give the page a moment to settle after login before navigating
+    await growthPlanPage.waitForTimeout(500);
+    const selectTenantPage = new SelectTenantPage(growthPlanPage);
     await selectTenantPage.goto();
 
-    // Act: Create new tenant
     const newTenantName = `Brand New Tenant ${Date.now()}`;
     await selectTenantPage.createTenant(newTenantName);
 
@@ -70,19 +42,13 @@ test.describe('Multi-Tenant Switching', () => {
     await selectTenantPage.expectTenantInList(newTenantName);
   });
 
-  test('should enforce plan limits for tenant creation', async ({ page }) => {
-    // Arrange: Starter user (limit: 1 tenant)
-    const { user } = await factory.createUserWithTenant('owner', {
-      planTier: 'starter',
-    });
+  test('should enforce plan limits for tenant creation', async ({ starterPlanPage }) => {
+    // Arrange: Using starter plan user fixture (limit: 1 tenant)
 
-    // Act: Login and navigate to select tenant
-    const loginPage = new LoginPage(page);
-    await loginPage.goto();
-    await loginPage.login(user.email, user.password);
-    await page.waitForURL(/\/dashboard/, { timeout: 10000 });
-
-    const selectTenantPage = new SelectTenantPage(page);
+    // Act: Navigate to select tenant page (already authenticated)
+    // Give the page a moment to settle after login before navigating
+    await starterPlanPage.waitForTimeout(500);
+    const selectTenantPage = new SelectTenantPage(starterPlanPage);
     await selectTenantPage.goto();
 
     // Assert: Create button should be disabled or not available
@@ -94,14 +60,13 @@ test.describe('Multi-Tenant Switching', () => {
     expect(limitEnforced).toBeTruthy();
   });
 
-  test('should redirect to select-tenant if no tenant selected', async ({ page }) => {
-    // Arrange: User without lastUsedTenantId
-    const user = await factory.createUser();
+  test('should redirect to select-tenant if no tenant selected', async ({ page, userWithoutTenant }) => {
+    // Arrange: User without any tenants
 
     // Act: Login
     const loginPage = new LoginPage(page);
     await loginPage.goto();
-    await loginPage.login(user.email, user.password);
+    await loginPage.login(userWithoutTenant.email, userWithoutTenant.password);
 
     // Assert: Redirected to select-tenant (middleware behavior)
     await page.waitForURL(/\/select-tenant/, { timeout: 10000 });

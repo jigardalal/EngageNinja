@@ -141,4 +141,23 @@ export class TestDataFactory {
 
     return { user, tenants };
   }
+
+  async createTenantForUser(
+    userId: string,
+    role: 'owner' | 'admin' | 'viewer' = 'owner',
+    overrides?: Partial<TestTenant>
+  ): Promise<TestTenant> {
+    const tenant = await this.createTenant(overrides);
+
+    await this.prisma.userTenant.create({
+      data: {
+        userId,
+        tenantId: tenant.id,
+        role,
+        lastActiveAt: new Date(),
+      },
+    });
+
+    return tenant;
+  }
 }

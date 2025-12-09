@@ -1,0 +1,67 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - link "EngageNinja" [ref=e5] [cursor=pointer]:
+          - /url: /
+        - button "Tenant Choose tenant No plan" [ref=e7]:
+          - generic [ref=e8]: Tenant
+          - generic [ref=e9]: Choose tenant
+          - generic [ref=e10]: No plan
+          - generic [ref=e11]: ▼
+    - main [ref=e12]:
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - generic [ref=e15]:
+            - paragraph [ref=e16]: Tenant creation
+            - heading "Choose or create the right tenant" [level=1] [ref=e17]
+            - paragraph [ref=e18]: "Guardrails keep every workspace scoped to the right boundary. Create a tenant, pick your plan, and stay within the quota defenders (\"STARTER plan: Starter plans include one tenant with essential access.\")."
+            - paragraph [ref=e19]: "Active guard: ACTIVE_TENANT_REQUIRED"
+            - generic [ref=e20]:
+              - paragraph [ref=e21]: "Plan limit: 1 tenant (1 used, 0 available)."
+              - paragraph
+          - generic [ref=e22]:
+            - paragraph [ref=e23]: Plan caps
+            - heading "Plan quota snapshot" [level=2] [ref=e24]
+            - generic [ref=e25]:
+              - paragraph [ref=e26]: Starter ≤ 1 tenant, Growth ≤ 5 tenants, Agency ≤ 25 tenants.
+              - paragraph [ref=e27]: Open a workspace only when you have an active tenant for that region.
+        - generic [ref=e28]:
+          - generic [ref=e29]:
+            - generic [ref=e30]:
+              - heading "Existing tenants" [level=3] [ref=e31]
+              - generic [ref=e32]: Guarded
+            - article [ref=e34]:
+              - generic [ref=e35]:
+                - generic [ref=e36]:
+                  - paragraph [ref=e37]: Test Tenant 1
+                  - paragraph [ref=e38]: OWNER
+                - generic [ref=e39]: Starter
+              - paragraph [ref=e40]: "Region: us-east-1"
+              - paragraph [ref=e41]: "Capabilities: core"
+          - generic [ref=e42]:
+            - heading "Create a tenant" [level=3] [ref=e43]
+            - generic [ref=e44]:
+              - text: Workspace name
+              - textbox "Acme Operations" [ref=e45]
+            - generic [ref=e46]:
+              - text: Region
+              - textbox "us-east-1" [ref=e47]
+            - generic [ref=e48]:
+              - text: Plan tier
+              - combobox [ref=e49]:
+                - option "Starter" [selected]
+                - option "Growth"
+                - option "Agency"
+            - generic [ref=e50]:
+              - text: Capability flags
+              - textbox "resend, audit" [ref=e51]
+              - paragraph [ref=e52]: Comma-separated flags for guardrail experiences.
+            - button "Plan limit reached" [disabled] [ref=e53]
+  - button "Open Next.js Dev Tools" [ref=e59] [cursor=pointer]:
+    - img [ref=e60]
+  - alert [ref=e63]
+```

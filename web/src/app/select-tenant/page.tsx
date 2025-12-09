@@ -56,7 +56,7 @@ export default function SelectTenantPage() {
 
   const isPlanMaxed = tenants.length >= planQuota;
   const remainingSlots = Math.max(0, planQuota - tenants.length);
-  const planCopy = planGuidance[planTier];
+  const planCopy = planGuidance[planTier] || planGuidance['starter'];
 
   const onSubmit = form.handleSubmit(async (values) => {
     setApiError(null);
@@ -137,7 +137,7 @@ export default function SelectTenantPage() {
           <h1 className="mt-2 text-3xl font-semibold">Choose or create the right tenant</h1>
           <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
             Guardrails keep every workspace scoped to the right boundary. Create a tenant, pick your plan, and stay within the
-            quota defenders (“{planTier.toUpperCase()} plan: {planCopy}”).
+            quota defenders ("{(planTier || 'starter').toUpperCase()} plan: {planCopy}").
           </p>
           <p className="mt-3 text-xs uppercase tracking-wide text-slate-400">Active guard: ACTIVE_TENANT_REQUIRED</p>
           <div className="mt-4 rounded-2xl bg-slate-50/80 p-4 text-sm text-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
