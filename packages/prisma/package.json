@@ -7,12 +7,18 @@
     "generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
     "db:push": "prisma db push",
+    "seed": "prisma db seed",
+    "prepare-db": "pnpm db:push && pnpm seed",
     "format": "prisma format"
   },
   "dependencies": {
-    "@prisma/client": "5.22.0"
+    "@prisma/client": "7.1.0",
+    "dotenv": "^16.6.1"
   },
   "devDependencies": {
-    "prisma": "5.22.0"
+    "prisma": "7.1.0"
+  },
+  "prisma": {
+    "seed": "node ./seed.js"
   }
 }

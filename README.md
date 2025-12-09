@@ -26,3 +26,11 @@ Manual verification steps for Story 1.1 (signup/login, tenant switching).
 - Web: `pnpm test -- --testPathPattern auth-pages.test.tsx --runInBand`
 - Web middleware: `pnpm test -- --runTestsByPath src/middleware.test.ts --runInBand`
 - API e2e: from `api/` run `DATABASE_URL=postgresql://engageninja:engageninja@localhost:5433/engageninja pnpm test:e2e`
+
+## Seed data
+- Run `pnpm prepare-db` (or `pnpm --filter @engageninja/prisma prepare-db`) after applying migrations to push the schema
+  and hydrate the sample tenants/users/members for manual verification or faster local sanity checks.
+- Credentials seeded by the script: `owner@example.com` and `member@example.com` both use `Test123!Aa`.
+  `owner@example.com` belongs to the Growth-tier tenant `Alpha Workspace` and is also a viewer on `Beta Collective`,
+  which is the Starter-tier tenant for `member@example.com`.
+- The API e2e suite now runs `pnpm --filter @engageninja/prisma prepare-db` before Jest so those tests always see seeded data.

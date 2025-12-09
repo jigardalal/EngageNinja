@@ -5,6 +5,10 @@
   "packageManager": "pnpm@10.20.0",
   "scripts": {
     "lint": "pnpm -r lint",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "prepare-db": "pnpm --filter @engageninja/prisma prepare-db"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.1.0"
   }
 }
