@@ -10,9 +10,9 @@ export class SelectTenantPage extends BasePage {
   constructor(page: Page) {
     super(page);
     this.createTenantForm = page.locator('form').first();
-    this.tenantNameInput = page.getByLabel(/workspace name|tenant name/i);
-    this.createButton = page.getByRole('button', { name: /create|add/i }).first();
-    this.successMessage = page.locator('p[class*="text-emerald"]');
+    this.tenantNameInput = page.getByLabel(/workspace name/i);
+    this.createButton = page.getByRole('button', { name: /create tenant/i });
+    this.successMessage = page.locator('p').filter({ hasText: /created/ }).first();
   }
 
   async goto() {
