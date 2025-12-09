@@ -14,7 +14,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     user: AuthContext | false,
     _info: unknown,
     context: ExecutionContext,
-  ): AuthContext {
+  ): any {
     if (err || !user) {
       throw new HttpException(
         { code: 'AUTH_UNAUTHORIZED', message: 'Unauthorized' },

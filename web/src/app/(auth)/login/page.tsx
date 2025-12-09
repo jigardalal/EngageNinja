@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,16 +11,16 @@ import { persistSession, postAuth } from '@/lib/auth-client';
 
 const loginSchema = z.object({
   email: z
-    .string({ required_error: 'Email is required' })
+    .string({ message: 'Email is required' })
     .trim()
     .min(1, 'Email is required')
     .email('Enter a valid email'),
-  password: z.string({ required_error: 'Password is required' }),
+  password: z.string({ message: 'Password is required' }),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams?.get('redirect');
@@ -154,5 +154,13 @@ export default function LoginPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

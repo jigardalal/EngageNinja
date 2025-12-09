@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,12 +11,12 @@ import { persistSession, postAuth } from '@/lib/auth-client';
 
 const signupSchema = z.object({
   email: z
-    .string({ required_error: 'Email is required' })
+    .string({ message: 'Email is required' })
     .trim()
     .min(1, 'Email is required')
     .email('Enter a valid email'),
   password: z
-    .string({ required_error: 'Password is required' })
+    .string({ message: 'Password is required' })
     .min(8, 'Password must include uppercase, lowercase, number, and be at least 8 characters.')
     .regex(
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/,
@@ -27,7 +27,7 @@ const signupSchema = z.object({
 
 type SignupForm = z.infer<typeof signupSchema>;
 
-export default function SignupPage() {
+function SignupContent() {
   const router = useRouter();
   const [apiError, setApiError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -167,11 +167,19 @@ export default function SignupPage() {
             </button>
 
             <p className={`text-center text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              You’ll land in your workspace after signup.
+              You'll land in your workspace after signup.
             </p>
           </form>
         </div>
       </div>
     </main>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <SignupContent />
+    </Suspense>
   );
 }

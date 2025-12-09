@@ -5,6 +5,7 @@ import { ExtractJwt, Strategy, StrategyOptions } from 'passport-jwt';
 import { Request } from 'express';
 
 import { AuthContext } from './auth.types';
+import { PlanTier } from '../common/enums/plan-tier.enum';
 
 function cookieExtractor(req: Request): string | null {
   const token = req?.cookies?.access_token as string | undefined;
@@ -43,7 +44,7 @@ export class JwtAuthStrategy extends PassportStrategy(Strategy) {
       email: payload.email,
       tenantId: payload.tenantId,
       activeTenantId: payload.activeTenantId ?? payload.tenantId,
-      planTier: payload.planTier,
+      planTier: payload.planTier as PlanTier,
       capabilityFlags: payload.capabilityFlags ?? [],
       tenantRegion: payload.tenantRegion,
       planQuota: payload.planQuota ?? 0,
