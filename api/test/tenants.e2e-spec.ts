@@ -1,6 +1,7 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PlanTier } from '../src/common/enums/plan-tier.enum';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -62,13 +63,20 @@ interface JwtPayload {
 }
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../packages/prisma/.env') });
 
 describe('Tenants e2e', () => {
   let app: INestApplication;
   let prisma: PrismaClient;
 
   beforeAll(async () => {
-    prisma = new PrismaClient();
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error('DATABASE_URL must be set for e2e tests');
+    }
+    prisma = new PrismaClient({
+      adapter: new PrismaPg({ connectionString: databaseUrl }),
+    });
     await prisma.$connect();
 
     const moduleRef = await Test.createTestingModule({

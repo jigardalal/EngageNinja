@@ -2,11 +2,17 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, HttpStatus, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
+
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../packages/prisma/.env') });
 
 describe('Tenant Members (e2e)', () => {
   let app: INestApplication;
@@ -20,7 +26,13 @@ describe('Tenant Members (e2e)', () => {
   let memberId: string;
 
   beforeAll(async () => {
-    prisma = new PrismaClient();
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error('DATABASE_URL must be set for e2e tests');
+    }
+    prisma = new PrismaClient({
+      adapter: new PrismaPg({ connectionString: databaseUrl }),
+    });
     await prisma.$connect();
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
