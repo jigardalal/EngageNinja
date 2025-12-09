@@ -23,14 +23,15 @@ model User {
 }
 
 model Tenant {
-  id           String        @id @default(uuid()) @map("id")
-  name         String        @map("name")
-  settings     TenantSetting?
-  userTenants  UserTenant[]
-  usersLastUsed User[]       @relation("LastUsedTenant")
-  auditLogs    AuditLog[]
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
+  id            String          @id @default(uuid()) @map("id")
+  name          String          @map("name")
+  settings      TenantSetting?
+  userTenants   UserTenant[]
+  tenantMembers TenantMember[]
+  usersLastUsed User[]          @relation("LastUsedTenant")
+  auditLogs     AuditLog[]
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
 
   @@map("tenants")
 }
@@ -77,4 +78,25 @@ model AuditLog {
   @@index([tenantId], map: "audit_logs_tenant_id_idx")
   @@index([userId], map: "audit_logs_user_id_idx")
   @@map("audit_logs")
+}
+
+model TenantMember {
+  id            String   @id @default(uuid()) @map("id")
+  tenantId      String   @map("tenant_id")
+  email         String   @map("email")
+  role          String   @map("role")
+  status        String   @default("pending") @map("status")
+  inviteToken   String?  @unique @map("invite_token")
+  invitedBy     String   @map("invited_by")
+  acceptedAt    DateTime? @map("accepted_at")
+  metadata      Json?    @map("metadata")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId], map: "tenant_members_tenant_id_idx")
+  @@index([email], map: "tenant_members_email_idx")
+  @@index([inviteToken], map: "tenant_members_invite_token_idx")
+  @@unique([tenantId, email], map: "tenant_members_tenant_email_unique")
+  @@map("tenant_members")
 }

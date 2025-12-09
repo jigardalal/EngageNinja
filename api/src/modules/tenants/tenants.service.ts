@@ -1,9 +1,10 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, Tenant, TenantSetting } from '@prisma/client';
+import { randomBytes } from 'crypto';
 
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateTenantDto } from './dto/create-tenant.dto';
+import { CreateTenantDto, InviteTenantMemberDto, UpdateMemberRoleDto } from './dto';
 import { planTierFromValue, PlanTier } from '../../common/enums/plan-tier.enum';
 import { tenantLimitForPlan } from '../../common/utils/tenant-plan.util';
 
@@ -176,6 +177,198 @@ export class TenantsService {
         {
           code: 'TENANT_MEMBERSHIP_REQUIRED',
           message: 'Not a member of the tenant',
+        },
+        HttpStatus.FORBIDDEN,
+      );
+    }
+  }
+
+  async inviteMember(
+    userId: string,
+    tenantId: string,
+    dto: InviteTenantMemberDto,
+    ipAddress?: string,
+  ) {
+    await this.ensureMembership(userId, tenantId);
+    await this.ensureAdminOrOwner(userId, tenantId);
+
+    const inviteToken = randomBytes(32).toString('hex');
+
+    const existingMember = await this.prisma.tenantMember.findFirst({
+      where: {
+        tenantId,
+        email: dto.email,
+      },
+    });
+
+    let member;
+    if (existingMember) {
+      member = await this.prisma.tenantMember.update({
+        where: { id: existingMember.id },
+        data: {
+          role: dto.role,
+          inviteToken,
+          status: 'pending',
+          acceptedAt: null,
+          updatedAt: new Date(),
+        },
+      });
+    } else {
+      member = await this.prisma.tenantMember.create({
+        data: {
+          tenantId,
+          email: dto.email,
+          role: dto.role,
+          inviteToken,
+          invitedBy: userId,
+          status: 'pending',
+        },
+      });
+    }
+
+    await this.createAuditLog(
+      'tenant.member.invite',
+      userId,
+      tenantId,
+      ipAddress,
+      {
+        invitedEmail: dto.email,
+        role: dto.role,
+        memberId: member.id,
+      },
+    );
+
+    return {
+      id: member.id,
+      email: member.email,
+      role: member.role,
+      status: member.status,
+      createdAt: member.createdAt,
+    };
+  }
+
+  async listMembers(userId: string, tenantId: string) {
+    await this.ensureMembership(userId, tenantId);
+
+    const members = await this.prisma.tenantMember.findMany({
+      where: { tenantId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        status: true,
+        createdAt: true,
+        acceptedAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return members;
+  }
+
+  async updateMemberRole(
+    userId: string,
+    tenantId: string,
+    memberId: string,
+    dto: UpdateMemberRoleDto,
+    ipAddress?: string,
+  ) {
+    await this.ensureMembership(userId, tenantId);
+    await this.ensureAdminOrOwner(userId, tenantId);
+
+    const member = await this.prisma.tenantMember.findFirst({
+      where: { id: memberId, tenantId },
+    });
+
+    if (!member) {
+      throw new HttpException(
+        {
+          code: 'MEMBER_NOT_FOUND',
+          message: 'Member not found in this tenant',
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const updated = await this.prisma.tenantMember.update({
+      where: { id: memberId },
+      data: { role: dto.role },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        status: true,
+        updatedAt: true,
+      },
+    });
+
+    await this.createAuditLog(
+      'tenant.member.role_update',
+      userId,
+      tenantId,
+      ipAddress,
+      {
+        memberId,
+        memberEmail: member.email,
+        newRole: dto.role,
+        previousRole: member.role,
+      },
+    );
+
+    return updated;
+  }
+
+  async revokeMember(
+    userId: string,
+    tenantId: string,
+    memberId: string,
+    ipAddress?: string,
+  ) {
+    await this.ensureMembership(userId, tenantId);
+    await this.ensureAdminOrOwner(userId, tenantId);
+
+    const member = await this.prisma.tenantMember.findFirst({
+      where: { id: memberId, tenantId },
+    });
+
+    if (!member) {
+      throw new HttpException(
+        {
+          code: 'MEMBER_NOT_FOUND',
+          message: 'Member not found in this tenant',
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    await this.prisma.tenantMember.delete({
+      where: { id: memberId },
+    });
+
+    await this.createAuditLog(
+      'tenant.member.revoke',
+      userId,
+      tenantId,
+      ipAddress,
+      {
+        revokedMemberId: memberId,
+        revokedEmail: member.email,
+      },
+    );
+
+    return { success: true };
+  }
+
+  private async ensureAdminOrOwner(userId: string, tenantId: string) {
+    const membership = await this.prisma.userTenant.findFirst({
+      where: { userId, tenantId },
+    });
+
+    if (!membership || !['owner', 'admin'].includes(membership.role)) {
+      throw new HttpException(
+        {
+          code: 'INSUFFICIENT_PERMISSIONS',
+          message: 'Only owners and admins can manage members',
         },
         HttpStatus.FORBIDDEN,
       );

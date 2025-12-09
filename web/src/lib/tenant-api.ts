@@ -73,3 +73,51 @@ export async function fetchCurrentUser(): Promise<AuthSession> {
     method: 'GET',
   });
 }
+
+export enum TenantRole {
+  OWNER = 'owner',
+  ADMIN = 'admin',
+  MARKETER = 'marketer',
+  AGENCY_MARKETER = 'agency_marketer',
+  VIEWER = 'viewer',
+}
+
+export interface TenantMember {
+  id: string;
+  email: string;
+  role: TenantRole;
+  status: 'pending' | 'accepted';
+  createdAt: string;
+  acceptedAt?: string;
+}
+
+export async function inviteTenantMember(
+  tenantId: string,
+  payload: { email: string; role: TenantRole; message?: string }
+): Promise<TenantMember> {
+  return fetchJson<TenantMember>(`/tenants/${tenantId}/members/invite`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listTenantMembers(tenantId: string): Promise<TenantMember[]> {
+  return fetchJson<TenantMember[]>(`/tenants/${tenantId}/members`);
+}
+
+export async function updateMemberRole(
+  tenantId: string,
+  memberId: string,
+  role: TenantRole
+): Promise<TenantMember> {
+  return fetchJson<TenantMember>(`/tenants/${tenantId}/members/${memberId}/role`, {
+    method: 'PUT',
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function revokeMember(tenantId: string, memberId: string): Promise<void> {
+  return fetchJson<void>(`/tenants/${tenantId}/members/${memberId}`, {
+    method: 'DELETE',
+  });
+}
