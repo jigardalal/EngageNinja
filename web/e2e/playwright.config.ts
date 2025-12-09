@@ -6,15 +6,16 @@ import * as dotenv from 'dotenv';
 dotenv.config({ path: path.resolve(__dirname, '.env.e2e') });
 
 export default defineConfig({
-  testDir: './tests',
+  testDir: path.resolve(__dirname, './tests'),
+  testMatch: '**/*.spec.ts',
   fullyParallel: false, // Sequential for database integrity
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1, // Single worker to avoid DB race conditions
   reporter: [
-    ['html', { outputFolder: 'playwright-report' }],
+    ['html', { outputFolder: path.resolve(__dirname, 'playwright-report') }],
     ['list'],
-    ['json', { outputFile: 'test-results/results.json' }],
+    ['json', { outputFile: path.resolve(__dirname, 'test-results/results.json') }],
   ],
 
   globalSetup: path.resolve(__dirname, 'global-setup.ts'),
