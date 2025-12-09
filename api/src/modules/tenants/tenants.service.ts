@@ -290,9 +290,34 @@ export class TenantsService {
       );
     }
 
-    const updated = await this.prisma.tenantMember.update({
+    // Find if user already has a user_tenants entry
+    const existingUserTenant = await this.prisma.userTenant.findFirst({
+      where: {
+        tenantId,
+        user: { email: member.email },
+      },
+    });
+
+    // Update both tenant_members and user_tenants in transaction
+    await this.prisma.$transaction(async (prisma) => {
+      // Update tenant_members entry
+      await prisma.tenantMember.update({
+        where: { id: memberId },
+        data: { role: dto.role },
+      });
+
+      // If user already belongs to tenant, update their role in user_tenants
+      // so downstream guards and capability checks see the new role immediately
+      if (existingUserTenant) {
+        await prisma.userTenant.update({
+          where: { id: existingUserTenant.id },
+          data: { role: dto.role, lastActiveAt: new Date() },
+        });
+      }
+    });
+
+    const updated = await this.prisma.tenantMember.findFirst({
       where: { id: memberId },
-      data: { role: dto.role },
       select: {
         id: true,
         email: true,
@@ -312,6 +337,7 @@ export class TenantsService {
         memberEmail: member.email,
         newRole: dto.role,
         previousRole: member.role,
+        syncedUserTenant: !!existingUserTenant,
       },
     );
 
@@ -341,8 +367,30 @@ export class TenantsService {
       );
     }
 
-    await this.prisma.tenantMember.delete({
-      where: { id: memberId },
+    // Find if user has a user_tenants entry that needs to be deleted
+    const userTenant = await this.prisma.userTenant.findFirst({
+      where: {
+        tenantId,
+        user: { email: member.email },
+      },
+    });
+
+    // Delete both tenant_members and user_tenants in transaction
+    // This ensures revoked members immediately lose access to protected routes
+    // and ActiveTenantGuard will reject them with ACTIVE_TENANT_REQUIRED
+    await this.prisma.$transaction(async (prisma) => {
+      // Delete the tenant member invitation record
+      await prisma.tenantMember.delete({
+        where: { id: memberId },
+      });
+
+      // Delete the user_tenants relationship if it exists
+      // This is critical: revoked users must not appear as members in guards/permissions
+      if (userTenant) {
+        await prisma.userTenant.delete({
+          where: { id: userTenant.id },
+        });
+      }
     });
 
     await this.createAuditLog(
@@ -353,6 +401,7 @@ export class TenantsService {
       {
         revokedMemberId: memberId,
         revokedEmail: member.email,
+        userTenantDeleted: !!userTenant,
       },
     );
 
