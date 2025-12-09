@@ -1,9 +1,20 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Ip, Post, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Ip,
+  Post,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { SkipActiveTenantCheck } from './decorators/skip-active-tenant.decorator';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
 import { SwitchTenantDto } from './dto/switch-tenant.dto';
@@ -17,7 +28,11 @@ export class AuthController {
 
   @Post('signup')
   @HttpCode(HttpStatus.CREATED)
-  async signup(@Body() dto: SignupDto, @Ip() ipAddress: string | undefined, @Res({ passthrough: true }) res: Response) {
+  async signup(
+    @Body() dto: SignupDto,
+    @Ip() ipAddress: string | undefined,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const result = await this.authService.signup(dto, ipAddress);
     setAuthCookies(res, result.tokens, result.tenant.id);
     return result;
@@ -26,7 +41,11 @@ export class AuthController {
   @Post('login')
   @Throttle({ default: { limit: 50, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
-  async login(@Body() dto: LoginDto, @Ip() ipAddress: string | undefined, @Res({ passthrough: true }) res: Response) {
+  async login(
+    @Body() dto: LoginDto,
+    @Ip() ipAddress: string | undefined,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const result = await this.authService.login(dto, ipAddress);
     setAuthCookies(res, result.tokens, result.tenant.id);
     return result;
@@ -41,6 +60,7 @@ export class AuthController {
   @Post('switch-tenant')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
+  @SkipActiveTenantCheck()
   async switchTenant(
     @Body() dto: SwitchTenantDto,
     @CurrentUser() user: AuthContext,

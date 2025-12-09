@@ -13,7 +13,7 @@ export class ResponseInterceptor implements NestInterceptor {
     next: CallHandler,
   ): Observable<{ data: unknown }> {
     return next.handle().pipe(
-      map((data) => ({
+      map((data: unknown) => ({
         data,
       })),
     );

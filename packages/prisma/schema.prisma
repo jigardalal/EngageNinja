@@ -15,6 +15,7 @@ model User {
   lastUsedTenant    Tenant?       @relation("LastUsedTenant", fields: [lastUsedTenantId], references: [id])
   userTenants       UserTenant[]
   auditLogs         AuditLog[]
+  planTier          String        @map("plan_tier") @default("starter")
   createdAt         DateTime      @default(now()) @map("created_at")
   updatedAt         DateTime      @updatedAt @map("updated_at")
 
@@ -24,6 +25,7 @@ model User {
 model Tenant {
   id           String        @id @default(uuid()) @map("id")
   name         String        @map("name")
+  settings     TenantSetting?
   userTenants  UserTenant[]
   usersLastUsed User[]       @relation("LastUsedTenant")
   auditLogs    AuditLog[]
@@ -31,6 +33,20 @@ model Tenant {
   updatedAt    DateTime      @updatedAt @map("updated_at")
 
   @@map("tenants")
+}
+
+model TenantSetting {
+  id              String    @id @default(uuid()) @map("id")
+  tenantId        String    @unique @map("tenant_id")
+  planTier        String    @map("plan_tier")
+  region          String    @map("region")
+  capabilityFlags String[]  @map("capability_flags")
+  metadata        Json?     @map("metadata")
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@map("tenant_settings")
 }
 
 model UserTenant {
@@ -53,6 +69,7 @@ model AuditLog {
   action     String   @map("action")
   targetId   String?  @map("target_id")
   ipAddress  String?  @map("ip_address")
+  metadata   Json?    @map("metadata")
   createdAt  DateTime @default(now()) @map("created_at")
   user       User?    @relation(fields: [userId], references: [id])
   tenant     Tenant?  @relation(fields: [tenantId], references: [id])

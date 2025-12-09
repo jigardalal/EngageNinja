@@ -4,7 +4,8 @@ import { AuthContext } from '../auth.types';
 
 export const CurrentUser = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): AuthContext => {
-    const request = ctx.switchToHttp().getRequest();
-    return request.user as AuthContext;
+    const request = ctx.switchToHttp().getRequest<{ user: AuthContext }>();
+
+    return request.user;
   },
 );

@@ -1,6 +1,10 @@
 import { Response } from 'express';
 
-export function setAuthCookies(res: Response, tokens: { accessToken: string; refreshToken: string }, tenantId: string) {
+export function setAuthCookies(
+  res: Response,
+  tokens: { accessToken: string; refreshToken: string },
+  tenantId: string,
+) {
   const baseCookie = {
     httpOnly: true,
     sameSite: 'lax' as const,
@@ -10,5 +14,6 @@ export function setAuthCookies(res: Response, tokens: { accessToken: string; ref
 
   res.cookie('access_token', tokens.accessToken, baseCookie);
   res.cookie('refresh_token', tokens.refreshToken, baseCookie);
-  res.cookie('tenant_id', tenantId, { ...baseCookie, httpOnly: false });
+  // Tenant ID is also httpOnly for security; rely on JWT claim for client-side access
+  res.cookie('tenant_id', tenantId, baseCookie);
 }

@@ -1,18 +1,35 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { Tenant, User, UserTenant } from '@prisma/client';
+import {
+  Prisma,
+  Tenant,
+  TenantSetting,
+  User,
+  UserTenant,
+} from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
-import { AuthContext, AuthResult, AuthTenant, AuthTokens, AuthUser } from './auth.types';
+import {
+  AuthContext,
+  AuthResult,
+  AuthTenant,
+  AuthTokens,
+  AuthUser,
+} from './auth.types';
+import { PlanTier, planTierFromValue } from '../common/enums/plan-tier.enum';
+import { tenantLimitForPlan } from '../common/utils/tenant-plan.util';
 import { generateSessionId } from './auth.util';
 
 @Injectable()
 export class AuthService {
-  private readonly loginAttempts = new Map<string, { count: number; firstAttempt: number }>();
+  private readonly loginAttempts = new Map<
+    string,
+    { count: number; firstAttempt: number }
+  >();
   private readonly loginLimit = 5;
   private readonly loginTtlMs = 60000;
 
@@ -32,24 +49,73 @@ export class AuthService {
       );
     }
 
+    const planTier = dto.planTier ?? PlanTier.Starter;
+    const region = dto.region?.trim() || 'global';
+    const capabilityFlags = dto.capabilityFlags ?? [];
+    const tenantName =
+      dto.tenantName?.trim() || this.tenantNameFromEmail(email);
+
     const passwordHash = await bcrypt.hash(dto.password, 12);
-    const tenantName = dto.tenantName?.trim() || this.tenantNameFromEmail(email);
-    const tenant = await this.prisma.tenant.create({
-      data: { name: tenantName },
+
+    const { user, tenant } = await this.prisma.$transaction(async (prisma) => {
+      const createdUser = await prisma.user.create({
+        data: {
+          email,
+
+          passwordHash,
+          planTier,
+        },
+      });
+
+      const tenantPayload = await prisma.tenant.create({
+        data: {
+          name: tenantName,
+          settings: {
+            create: {
+              planTier,
+              region,
+              capabilityFlags,
+            },
+          },
+        },
+        include: { settings: true },
+      });
+
+      await prisma.userTenant.create({
+        data: {
+          userId: createdUser.id,
+          tenantId: tenantPayload.id,
+          role: 'owner',
+          lastActiveAt: new Date(),
+        },
+      });
+
+      await prisma.user.update({
+        where: { id: createdUser.id },
+        data: { lastUsedTenantId: tenantPayload.id },
+      });
+
+      return {
+        user: { ...createdUser, lastUsedTenantId: tenantPayload.id },
+        tenant: tenantPayload,
+      };
     });
 
-    const user = await this.prisma.user.create({
-      data: {
-        email,
-        passwordHash,
-        lastUsedTenantId: tenant.id,
-        userTenants: { create: [{ tenantId: tenant.id, role: 'owner' }] },
-      },
+    await this.createAuditLog('auth.signup', user.id, tenant.id, ipAddress, {
+      planTier,
+      region,
+      capabilityFlags,
     });
 
-    await this.createAuditLog('auth.signup', user.id, tenant.id, ipAddress);
+    const tokens = await this.issueTokens({
+      userId: user.id,
+      email,
+      tenantId: tenant.id,
+      planTier: planTier,
+      tenantRegion: tenant.settings?.region,
+      capabilityFlags: tenant.settings?.capabilityFlags ?? [],
+    });
 
-    const tokens = await this.issueTokens(user.id, tenant.id, email);
     return {
       user: this.toAuthUser(user),
       tenant: this.toAuthTenant(tenant),
@@ -68,9 +134,17 @@ export class AuthService {
     });
 
     if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
-      await this.createAuditLog('auth.login.failed', user?.id, user?.lastUsedTenantId ?? undefined, ipAddress);
+      await this.createAuditLog(
+        'auth.login.failed',
+        user?.id,
+        user?.lastUsedTenantId ?? undefined,
+        ipAddress,
+      );
       throw new HttpException(
-        { code: 'AUTH_INVALID_CREDENTIALS', message: 'Invalid email or password' },
+        {
+          code: 'AUTH_INVALID_CREDENTIALS',
+          message: 'Invalid email or password',
+        },
         HttpStatus.UNAUTHORIZED,
       );
     }
@@ -78,7 +152,10 @@ export class AuthService {
     this.loginAttempts.delete(rateLimitKey);
 
     const tenantId = await this.resolveTenantId(user);
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      include: { settings: true },
+    });
     if (!tenant) {
       throw new HttpException(
         { code: 'AUTH_TENANT_NOT_FOUND', message: 'Tenant not found for user' },
@@ -86,8 +163,20 @@ export class AuthService {
       );
     }
 
-    await this.createAuditLog('auth.login.success', user.id, tenantId, ipAddress);
-    const tokens = await this.issueTokens(user.id, tenantId, email);
+    await this.createAuditLog(
+      'auth.login.success',
+      user.id,
+      tenantId,
+      ipAddress,
+    );
+    const tokens = await this.issueTokens({
+      userId: user.id,
+      email,
+      tenantId,
+      planTier: planTierFromValue(user.planTier),
+      tenantRegion: tenant.settings?.region,
+      capabilityFlags: tenant.settings?.capabilityFlags ?? [],
+    });
 
     return {
       user: this.toAuthUser({ ...user, lastUsedTenantId: tenantId }),
@@ -96,19 +185,28 @@ export class AuthService {
     };
   }
 
-  async switchTenant(authContext: AuthContext, tenantId: string): Promise<AuthResult> {
+  async switchTenant(
+    authContext: AuthContext,
+    tenantId: string,
+  ): Promise<AuthResult> {
     const membership = await this.prisma.userTenant.findFirst({
       where: { userId: authContext.userId, tenantId },
     });
 
     if (!membership) {
       throw new HttpException(
-        { code: 'AUTH_TENANT_REQUIRED', message: 'Tenant not assigned to user' },
+        {
+          code: 'AUTH_TENANT_REQUIRED',
+          message: 'Tenant not assigned to user',
+        },
         HttpStatus.UNAUTHORIZED,
       );
     }
 
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      include: { settings: true },
+    });
     if (!tenant) {
       throw new HttpException(
         { code: 'AUTH_TENANT_NOT_FOUND', message: 'Tenant not found' },
@@ -122,7 +220,14 @@ export class AuthService {
     });
 
     await this.createAuditLog('auth.tenant.switch', user.id, tenantId);
-    const tokens = await this.issueTokens(user.id, tenantId, authContext.email);
+    const tokens = await this.issueTokens({
+      userId: user.id,
+      email: authContext.email,
+      tenantId,
+      planTier: planTierFromValue(user.planTier),
+      tenantRegion: tenant.settings?.region,
+      capabilityFlags: tenant.settings?.capabilityFlags ?? [],
+    });
 
     return {
       user: this.toAuthUser({ ...user, lastUsedTenantId: tenantId }),
@@ -131,17 +236,42 @@ export class AuthService {
     };
   }
 
-  private async issueTokens(userId: string, tenantId: string, email: string): Promise<AuthTokens> {
+  private async issueTokens(params: {
+    userId: string;
+    email: string;
+    tenantId: string;
+    planTier: PlanTier;
+    tenantRegion?: string;
+    capabilityFlags: string[];
+  }): Promise<AuthTokens> {
+    const { userId, email, tenantId, planTier, tenantRegion, capabilityFlags } =
+      params;
     const sessionId = generateSessionId();
-    const payload = { sub: userId, tenantId, email, sid: sessionId };
-    const accessTtlSeconds = Number(this.configService.get<string>('ACCESS_TOKEN_TTL')) || 900;
-    const refreshTtlSeconds = Number(this.configService.get<string>('REFRESH_TOKEN_TTL')) || 604800;
+    const planQuota = tenantLimitForPlan(planTier, this.configService);
+    const payload = {
+      sub: userId,
+      tenantId,
+      email,
+      activeTenantId: tenantId,
+      planTier,
+      tenantRegion: tenantRegion ?? null,
+      capabilityFlags,
+      planQuota,
+      sid: sessionId,
+    };
+    const accessTtlSeconds =
+      Number(this.configService.get<string>('ACCESS_TOKEN_TTL')) || 900;
+    const refreshTtlSeconds =
+      Number(this.configService.get<string>('REFRESH_TOKEN_TTL')) || 604800;
     const accessToken = await this.jwtService.signAsync(payload, {
-      secret: this.configService.get<string>('JWT_SECRET') || 'dev-secret-access',
+      secret:
+        this.configService.get<string>('JWT_SECRET') || 'dev-secret-access',
       expiresIn: accessTtlSeconds,
     });
     const refreshToken = await this.jwtService.signAsync(payload, {
-      secret: this.configService.get<string>('JWT_REFRESH_SECRET') || 'dev-secret-refresh',
+      secret:
+        this.configService.get<string>('JWT_REFRESH_SECRET') ||
+        'dev-secret-refresh',
       expiresIn: refreshTtlSeconds,
     });
 
@@ -176,7 +306,10 @@ export class AuthService {
     if (entry && now - entry.firstAttempt < this.loginTtlMs) {
       if (entry.count >= this.loginLimit) {
         throw new HttpException(
-          { code: 'AUTH_RATE_LIMITED', message: 'Too many login attempts. Please wait before retrying.' },
+          {
+            code: 'AUTH_RATE_LIMITED',
+            message: 'Too many login attempts. Please wait before retrying.',
+          },
           HttpStatus.TOO_MANY_REQUESTS,
         );
       }
@@ -192,6 +325,7 @@ export class AuthService {
     userId?: string,
     tenantId?: string,
     ipAddress?: string,
+    metadata?: Prisma.InputJsonValue,
   ) {
     await this.prisma.auditLog.create({
       data: {
@@ -199,6 +333,7 @@ export class AuthService {
         userId,
         tenantId,
         ipAddress,
+        metadata,
       },
     });
   }
@@ -213,10 +348,23 @@ export class AuthService {
       id: user.id,
       email: user.email,
       lastUsedTenantId: user.lastUsedTenantId as string,
+      planTier: planTierFromValue(user.planTier),
     };
   }
 
-  private toAuthTenant(tenant: Tenant): AuthTenant {
-    return { id: tenant.id, name: tenant.name };
+  private toAuthTenant(
+    tenant: Tenant & { settings?: TenantSetting | null },
+  ): AuthTenant {
+    return {
+      id: tenant.id,
+      name: tenant.name,
+      settings: tenant.settings
+        ? {
+            planTier: planTierFromValue(tenant.settings.planTier),
+            region: tenant.settings.region,
+            capabilityFlags: tenant.settings.capabilityFlags,
+          }
+        : null,
+    };
   }
 }

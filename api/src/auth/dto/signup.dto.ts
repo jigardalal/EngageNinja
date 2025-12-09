@@ -1,5 +1,15 @@
-import { IsEmail, IsOptional, IsString, IsStrongPassword, MaxLength } from 'class-validator';
+import {
+  ArrayUnique,
+  IsArray,
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsStrongPassword,
+  MaxLength,
+} from 'class-validator';
 
+import { PlanTier } from '../../common/enums/plan-tier.enum';
 export class SignupDto {
   @IsEmail()
   email!: string;
@@ -17,4 +27,19 @@ export class SignupDto {
   @IsString()
   @MaxLength(120)
   tenantName?: string;
+
+  @IsOptional()
+  @IsEnum(PlanTier)
+  planTier?: PlanTier;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  region?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  capabilityFlags?: string[];
 }

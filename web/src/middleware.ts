@@ -1,3 +1,9 @@
+/**
+ * Middleware for request-level routing and authentication checks.
+ * Next.js 16+: This uses the standard middleware.ts convention.
+ * See: https://nextjs.org/docs/app/building-your-application/routing/middleware
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 
 const AUTH_ROUTES = ['/login', '/signup'];
