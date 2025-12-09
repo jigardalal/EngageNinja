@@ -1,0 +1,26 @@
+# macOS cruft
+.DS_Store
+
+# Editor and IDE settings
+.idea/
+.vscode/
+*.swp
+*~
+
+# Local AI/agent tooling metadata
+.codex/
+.claude/
+.agentvibes/
+.bmad/
+.mcp.json
+
+# Logs and temporary files
+*.log
+tmp/
+.cache/
+
+# Dependency caches and build outputs (future-proofing)
+node_modules/
+dist/
+build/
+coverage/
