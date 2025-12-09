@@ -14,13 +14,21 @@
 .bmad/
 .mcp.json
 
+.env
+
 # Logs and temporary files
 *.log
 tmp/
 .cache/
+logs/
+pids/
+*.pid
+*.pid.lock
+*.seed
 
 # Dependency caches and build outputs (future-proofing)
 node_modules/
 dist/
 build/
 coverage/
+.pnpm-store/

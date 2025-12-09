@@ -1,0 +1,10 @@
+{
+  "name": "engageninja-monorepo",
+  "private": true,
+  "version": "0.0.1",
+  "packageManager": "pnpm@10.20.0",
+  "scripts": {
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test"
+  }
+}

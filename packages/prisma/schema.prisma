@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String        @id @default(uuid()) @map("id")
+  email             String        @unique @map("email")
+  passwordHash      String        @map("password_hash")
+  lastUsedTenantId  String?       @map("last_used_tenant_id")
+  lastUsedTenant    Tenant?       @relation("LastUsedTenant", fields: [lastUsedTenantId], references: [id])
+  userTenants       UserTenant[]
+  auditLogs         AuditLog[]
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Tenant {
+  id           String        @id @default(uuid()) @map("id")
+  name         String        @map("name")
+  userTenants  UserTenant[]
+  usersLastUsed User[]       @relation("LastUsedTenant")
+  auditLogs    AuditLog[]
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  @@map("tenants")
+}
+
+model UserTenant {
+  id          String   @id @default(uuid()) @map("id")
+  userId      String   @map("user_id")
+  tenantId    String   @map("tenant_id")
+  role        String   @map("role")
+  lastActiveAt DateTime? @map("last_active_at")
+  user        User     @relation(fields: [userId], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([userId, tenantId], map: "user_tenants_user_id_tenant_id_key")
+  @@map("user_tenants")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @map("id")
+  userId     String?  @map("user_id")
+  tenantId   String?  @map("tenant_id")
+  action     String   @map("action")
+  targetId   String?  @map("target_id")
+  ipAddress  String?  @map("ip_address")
+  createdAt  DateTime @default(now()) @map("created_at")
+  user       User?    @relation(fields: [userId], references: [id])
+  tenant     Tenant?  @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId], map: "audit_logs_tenant_id_idx")
+  @@index([userId], map: "audit_logs_user_id_idx")
+  @@map("audit_logs")
+}

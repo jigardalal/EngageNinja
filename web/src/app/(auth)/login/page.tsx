@@ -1,0 +1,158 @@
+'use client';
+
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+import { persistSession, postAuth } from '@/lib/auth-client';
+
+const loginSchema = z.object({
+  email: z
+    .string({ required_error: 'Email is required' })
+    .trim()
+    .min(1, 'Email is required')
+    .email('Enter a valid email'),
+  password: z.string({ required_error: 'Password is required' }),
+});
+
+type LoginForm = z.infer<typeof loginSchema>;
+
+export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams?.get('redirect');
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const form = useForm<LoginForm>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+  });
+
+  const onSubmit = form.handleSubmit(async (values) => {
+    setApiError(null);
+    setIsSubmitting(true);
+
+    try {
+      const result = await postAuth('/auth/login', values);
+      persistSession(result.tokens, result.tenant.id);
+      const destination = redirect || `/dashboard?tenantId=${result.tenant.id}`;
+      router.push(destination);
+    } catch (error) {
+      setApiError((error as Error).message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  });
+
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const stored = (localStorage.getItem('auth-theme') as 'light' | 'dark') || 'light';
+    setTheme(stored);
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted || typeof document === 'undefined') return;
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    localStorage.setItem('auth-theme', theme);
+  }, [theme, mounted]);
+
+  const isDark = mounted ? theme === 'dark' : false;
+  const pageBg = isDark ? 'bg-slate-900 text-slate-50' : 'bg-slate-50 text-slate-900';
+  const cardBg = isDark
+    ? 'bg-slate-900/80 text-slate-50 ring-white/10 shadow-slate-900/30'
+    : 'bg-white text-slate-900 ring-slate-100 shadow-slate-200';
+  const inputBg = isDark ? 'bg-slate-950/60 border-slate-700 focus:ring-emerald-500/60' : 'bg-white border-slate-200 focus:ring-emerald-100';
+  const inputBorder = isDark ? 'border-slate-700 focus:border-emerald-400' : 'border-slate-200 focus:border-emerald-500';
+  const accentText = isDark ? 'text-emerald-300' : 'text-emerald-600';
+
+  return (
+    <main className={`min-h-screen ${pageBg}`}>
+      <div className="mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center px-6 py-12">
+        <div className={`mb-4 flex w-full max-w-xl items-center justify-between gap-3 text-sm ${accentText}`}>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10">
+              <Image src="/logo.png" alt="EngageNinja logo" width={40} height={40} className="h-full w-full rounded-full bg-white/10 p-1" />
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-wide">Sign in</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setTheme(isDark ? 'light' : 'dark')}
+            className="rounded-full border border-emerald-200/50 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-400/40 dark:text-emerald-200 dark:hover:bg-emerald-900/40"
+          >
+            Switch to {isDark ? 'light' : 'dark'}
+          </button>
+        </div>
+        <div className={`w-full max-w-xl rounded-2xl p-8 shadow-xl ring-1 ${cardBg}`}>
+          <div className="mb-6 space-y-2 text-center">
+            <p className={`text-xs font-semibold uppercase tracking-wide ${accentText}`}>Welcome back</p>
+            <h1 className="text-3xl font-semibold">Sign in to EngageNinja</h1>
+            <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+              Enter your credentials to continue to your last tenant.
+            </p>
+          </div>
+
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div className="space-y-1">
+              <label className="block text-sm font-medium" htmlFor="email">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                className={`w-full rounded-lg px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 ${inputBg} ${inputBorder}`}
+                placeholder="you@example.com"
+                {...form.register('email')}
+              />
+              {form.formState.errors.email && (
+                <p className="text-sm text-rose-500" role="alert">
+                  {form.formState.errors.email.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-sm font-medium" htmlFor="password">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                className={`w-full rounded-lg px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 ${inputBg} ${inputBorder}`}
+                placeholder="••••••••"
+                {...form.register('password')}
+              />
+              {form.formState.errors.password && (
+                <p className="text-sm text-rose-500" role="alert">
+                  {form.formState.errors.password.message}
+                </p>
+              )}
+            </div>
+
+            {apiError && <p className="text-sm text-rose-500">{apiError}</p>}
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:ring-offset-2 focus:ring-offset-white disabled:cursor-not-allowed disabled:opacity-70 dark:bg-emerald-400 dark:hover:bg-emerald-300 dark:text-slate-900"
+            >
+              {isSubmitting ? 'Signing in...' : 'Sign in'}
+            </button>
+
+            <p className={`text-center text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              We’ll take you back to your last workspace after sign-in.
+            </p>
+          </form>
+        </div>
+      </div>
+    </main>
+  );
+}
