@@ -17,6 +17,8 @@ export class SelectTenantPage extends BasePage {
 
   async goto() {
     await super.goto('/select-tenant');
+    // Wait for the form heading which always renders
+    await this.page.locator('h3').filter({ hasText: /Create a tenant|Existing tenants/i }).first().waitFor({ state: 'visible', timeout: 10000 });
   }
 
   async createTenant(name: string) {
@@ -30,6 +32,6 @@ export class SelectTenantPage extends BasePage {
 
   async expectTenantInList(tenantName: string) {
     const card = this.page.locator('article', { hasText: tenantName });
-    await card.waitFor({ state: 'visible' });
+    await card.waitFor({ state: 'visible', timeout: 5000 });
   }
 }
