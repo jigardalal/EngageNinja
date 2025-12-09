@@ -16,6 +16,16 @@ test.describe('Multi-Tenant Switching', () => {
   test('should switch between multiple tenants', async ({ page }) => {
     // Arrange: User with 2 tenants
     const { user, tenants } = await factory.createUserWithMultipleTenants(2);
+    console.log('Created user:', user.id, 'with tenants:', tenants.map(t => t.id));
+
+    // Intercept API calls for debugging
+    page.on('response', response => {
+      if (response.url().includes('/tenants')) {
+        response.json().then(data => {
+          console.log('GET /tenants response:', data);
+        }).catch(() => {});
+      }
+    });
 
     // Act: Login
     const loginPage = new LoginPage(page);
@@ -29,6 +39,8 @@ test.describe('Multi-Tenant Switching', () => {
     expect(page.url()).toContain(tenants[0].id);
 
     // Act: Switch to tenant selector
+    // Wait a bit for dashboard to fully render and set auth state
+    await page.waitForTimeout(500);
     const selectTenantPage = new SelectTenantPage(page);
     await selectTenantPage.goto();
 
