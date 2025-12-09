@@ -1,36 +1,218 @@
-# EngageNinja – Auth flows quick start
+# EngageNinja
 
-Manual verification steps for Story 1.1 (signup/login, tenant switching).
+AI-first engagement platform combining WhatsApp, Email, and campaign automation for agencies and SMBs.
 
-## Prerequisites
-- Postgres running at `postgresql://engageninja:engageninja@localhost:5433/engageninja`.
-- Node 18+ and pnpm installed.
+## Tech Stack
 
-## API
-1) Set `DATABASE_URL=postgresql://engageninja:engageninja@localhost:5433/engageninja`.
-2) From `api/`: `pnpm install` (first time), then `pnpm start:dev`.
-3) Endpoints to try:
-   - `POST /auth/signup` with `{ email, password, tenantName? }` → 201, sets `access_token`, `refresh_token`, `tenant_id` cookies.
-   - `POST /auth/login` with `{ email, password }` → 200, sets cookies; invalid creds return `AUTH_INVALID_CREDENTIALS`.
-   - `POST /auth/switch-tenant` (Bearer access token + `{ tenantId }`) → 200, new tokens, audit log `auth.tenant.switch`.
+| Component | Tech |
+|-----------|------|
+| **Frontend** | Next.js 16, React 19, Tailwind, shadcn/ui |
+| **API** | NestJS, PostgreSQL, Prisma 7 |
+| **Worker** | NestJS, BullMQ, Redis |
+| **Tests** | Jest (unit), Playwright (E2E) |
 
-## Web
-1) Set `NEXT_PUBLIC_API_URL` to API origin if not same-origin; otherwise leave blank for same-origin.
-2) From `web/`: `pnpm install` (first time), then `pnpm dev`.
-3) Flows to exercise:
-   - `/signup`: create account → redirects to `/dashboard?tenantId=...`, `tenant_id` cookie set.
-   - `/login`: valid creds redirect to dashboard; invalid creds show inline error and stay on page.
-   - `/dashboard`: without cookies → redirects to `/login?redirect=/dashboard`; with `access_token` but no `tenant_id` → redirects to `/select-tenant`; with both → allowed.
+## Quick Start (3 Minutes)
 
-## Tests
-- Web: `pnpm test -- --testPathPattern auth-pages.test.tsx --runInBand`
-- Web middleware: `pnpm test -- --runTestsByPath src/middleware.test.ts --runInBand`
-- API e2e: from `api/` run `DATABASE_URL=postgresql://engageninja:engageninja@localhost:5433/engageninja pnpm test:e2e`
+### Prerequisites
+```bash
+# Ensure PostgreSQL is running
+docker ps | grep postgres
 
-## Seed data
-- Run `pnpm prepare-db` (or `pnpm --filter @engageninja/prisma prepare-db`) after applying migrations to push the schema
-  and hydrate the sample tenants/users/members for manual verification or faster local sanity checks.
-- Credentials seeded by the script: `owner@example.com` and `member@example.com` both use `Test123!Aa`.
-  `owner@example.com` belongs to the Growth-tier tenant `Alpha Workspace` and is also a viewer on `Beta Collective`,
-  which is the Starter-tier tenant for `member@example.com`.
-- The API e2e suite now runs `pnpm --filter @engageninja/prisma prepare-db` before Jest so those tests always see seeded data.
+# Ensure Node 18+ and pnpm 10+ installed
+node --version
+pnpm --version
+```
+
+### Setup & Run
+
+**Terminal 1: Database + API**
+```bash
+cd api
+pnpm install
+DATABASE_URL="postgresql://engageninja:engageninja@localhost:5433/engageninja" pnpm run start:dev
+# Wait for "Listening on port 3000"
+```
+
+**Terminal 2: Web**
+```bash
+cd web
+pnpm install
+pnpm run dev
+# Wait for "ready - started server on 0.0.0.0:3001"
+```
+
+**Test locally:**
+- Signup: http://localhost:3001/signup
+- Login: http://localhost:3001/login (use seeded creds below)
+
+## Running Tests
+
+### Unit & Integration Tests
+
+```bash
+# Web tests
+cd web && pnpm test
+
+# API tests
+cd api && pnpm test
+
+# Watch mode
+cd web && pnpm test:watch
+cd api && pnpm test:watch
+```
+
+### E2E Tests (Playwright)
+
+```bash
+# Ensure API and Web are running (see Quick Start above)
+
+cd web
+
+# Run with UI (recommended)
+pnpm run test:e2e:ui
+
+# Run headless
+pnpm run test:e2e
+
+# Debug mode
+pnpm run test:e2e:debug
+
+# View results
+pnpm run test:e2e:report
+```
+
+See `web/e2e/README.md` for detailed E2E test documentation.
+
+## Database Setup
+
+### First Time Only
+```bash
+cd api
+pnpm run prepare-db
+# This creates tables and seeds sample data
+```
+
+### Migrations
+```bash
+# Create migration after schema changes
+cd packages/prisma
+pnpm prisma migrate dev --name your_migration_name
+
+# Apply migrations
+pnpm prepare-db
+```
+
+## Seeded Credentials
+
+After running `prepare-db`, use these to test locally:
+
+| Email | Password | Tenant | Role |
+|-------|----------|--------|------|
+| `owner@example.com` | `Test123!Aa` | Alpha Workspace (Growth) | Owner |
+| `member@example.com` | `Test123!Aa` | Beta Collective (Starter) | Member |
+
+## Project Structure
+
+```
+EngageNinja/
+├── api/                  # NestJS backend
+│   ├── src/
+│   │   ├── auth/        # Authentication
+│   │   ├── modules/     # Feature modules
+│   │   └── common/      # Shared (guards, filters, interceptors)
+│   └── test/            # E2E tests
+├── web/                 # Next.js frontend
+│   ├── src/
+│   │   ├── app/         # Routes and pages
+│   │   ├── components/  # React components
+│   │   └── lib/         # Utilities and API clients
+│   └── e2e/            # Playwright E2E tests
+├── worker/             # Background jobs (BullMQ)
+├── packages/
+│   └── prisma/         # Shared database schema
+└── docs/               # Documentation
+```
+
+## Key Flows
+
+### Authentication
+- **Signup**: `POST /auth/signup` → creates user + tenant → sets cookies
+- **Login**: `POST /auth/login` → validates creds → sets access/refresh tokens + tenant_id
+- **Switch Tenant**: `POST /auth/switch-tenant` → updates active tenant → new tokens
+
+### Routes
+- `/login` - Login page
+- `/signup` - Signup page
+- `/select-tenant` - Choose or create tenant
+- `/dashboard` - Main app (protected)
+
+Protected routes redirect to `/login?redirect=...` if not authenticated.
+
+## Common Commands
+
+### Development
+```bash
+# Format code
+pnpm run format
+
+# Lint
+pnpm run lint
+
+# Build
+pnpm run build
+
+# Type check
+pnpm run typecheck
+```
+
+### Testing
+```bash
+# Run all tests
+pnpm test
+
+# Run E2E tests with UI
+cd web && pnpm run test:e2e:ui
+
+# Run tests in watch mode
+pnpm test:watch
+```
+
+### Database
+```bash
+# Seed database
+pnpm run prepare-db
+
+# Access Prisma Studio (visual DB explorer)
+cd packages/prisma && pnpm prisma studio
+```
+
+## Troubleshooting
+
+| Issue | Fix |
+|-------|-----|
+| **"Cannot connect to database"** | Ensure PostgreSQL is running and DATABASE_URL is set |
+| **"Port 3000/3001 already in use"** | Kill the process or use `lsof -i :3000` to find it |
+| **"Tests fail but pass locally"** | Ensure you're not using `test.only()` or `test.skip()` |
+| **"E2E tests timeout"** | Check that API is responding: `curl http://localhost:3000/health` |
+| **"Module not found errors"** | Run `pnpm install` in the relevant directory (api/, web/) |
+
+## Documentation
+
+- **[E2E Tests](./web/e2e/README.md)** - How to write and run Playwright tests
+- **[Product Brief](./docs/prd.md)** - Product requirements and features
+- **[Architecture](./docs/architecture.md)** - Technical architecture decisions
+- **[Epics & Stories](./docs/epics.md)** - Feature breakdown for development
+
+## Contributing
+
+1. Create a branch: `git checkout -b feature/your-feature`
+2. Make your changes
+3. Run tests: `pnpm test` (unit) and `pnpm run test:e2e` (E2E for UI changes)
+4. Push and create a PR
+5. CI runs automatically - all tests must pass
+
+## Questions?
+
+- Check docs in `/docs/`
+- Read test examples in `web/e2e/tests/`
+- Review API endpoints in `api/src/`
