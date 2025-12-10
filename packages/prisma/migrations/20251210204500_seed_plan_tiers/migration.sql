@@ -1,0 +1,7 @@
+-- Insert all 5 plan tiers with complete specifications
+INSERT INTO "plan_tiers" ("id", "name", "display_name", "max_tenants", "max_team_members", "max_monthly_sends", "max_ai_tokens_monthly", "available_channels", "capability_flags", "created_at", "updated_at") VALUES
+('free-tier-001', 'free', 'Free', 1, 1, 1000, 0, ARRAY['whatsapp'], ARRAY['core', 'campaigns', 'resend', 'basic_dashboard'], NOW(), NOW()),
+('starter-tier-001', 'starter', 'Starter', 1, 3, 10000, 1000, ARRAY['whatsapp'], ARRAY['core', 'campaigns', 'resend', 'basic_dashboard', 'ai_basic'], NOW(), NOW()),
+('growth-tier-002', 'growth', 'Growth', 1, 10, 100000, 5000, ARRAY['whatsapp', 'email'], ARRAY['core', 'campaigns', 'resend', 'basic_dashboard', 'ai_campaign_gen', 'segments', 'automation', 'api', 'analytics'], NOW(), NOW()),
+('agency-tier-003', 'agency', 'Agency', 50, 100, 500000, 50000, ARRAY['whatsapp', 'email'], ARRAY['core', 'campaigns', 'resend', 'basic_dashboard', 'ai_campaign_gen', 'segments', 'automation', 'api', 'analytics', 'multi_tenant', 'impersonation', 'advanced_automation', 'crm_adapters'], NOW(), NOW()),
+('enterprise-tier-004', 'enterprise', 'Enterprise', 1000, 500, 5000000, 500000, ARRAY['whatsapp', 'email'], ARRAY['core', 'campaigns', 'resend', 'basic_dashboard', 'ai_campaign_gen', 'segments', 'automation', 'api', 'analytics', 'multi_tenant', 'impersonation', 'advanced_automation', 'crm_adapters', 'sso', 'custom_residency', 'dedicated_infra', 'slas'], NOW(), NOW());

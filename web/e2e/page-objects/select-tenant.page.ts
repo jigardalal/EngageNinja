@@ -2,47 +2,19 @@ import { Page, Locator } from '@playwright/test';
 import { BasePage } from './base.page';
 
 export class SelectTenantPage extends BasePage {
-  readonly createTenantForm: Locator;
-  readonly tenantNameInput: Locator;
-  readonly createButton: Locator;
-  readonly successMessage: Locator;
-
   constructor(page: Page) {
     super(page);
-    this.createTenantForm = page.locator('form').first();
-    this.tenantNameInput = page.getByLabel(/workspace name/i);
-    this.createButton = page.getByRole('button', { name: /create tenant/i });
-    this.successMessage = page.locator('p').filter({ hasText: /created/ }).first();
   }
 
   async goto() {
     await super.goto('/select-tenant', { waitUntil: 'networkidle' });
-
-    // Wait for page to be interactive - either the form loads or an error appears
-    // Whichever comes first
-    try {
-      await Promise.race([
-        // Form is ready
-        this.page.locator('label').filter({ hasText: /workspace name/i }).first().waitFor({ state: 'visible', timeout: 20000 }),
-        // Or page has loaded and stabilized (networkidle means no pending requests)
-        this.page.waitForLoadState('networkidle'),
-      ]);
-    } catch (error) {
-      // If all waits fail, just try to continue anyway - page might be in a valid state
-      console.log('[SelectTenant] Page load completed (possibly partial)');
-    }
-  }
-
-  async createTenant(name: string) {
-    // Fill the form with the tenant name
-    const nameInput = this.page.getByPlaceholder('Acme Operations');
-    await nameInput.fill(name);
-
-    // Scroll the button into view
-    await this.createButton.scrollIntoViewIfNeeded();
-
-    // Click the button
-    await this.createButton.click();
+    // Wait for at least one article (tenant card) or empty state message to appear
+    await Promise.race([
+      this.page.locator('article').first().waitFor({ state: 'visible', timeout: 10000 }),
+      this.page.locator('text=/No workspaces found/').waitFor({ state: 'visible', timeout: 10000 })
+    ]).catch(() => {
+      // If both fail, page might still be loading but that's ok
+    });
   }
 
   async getTenantCards() {

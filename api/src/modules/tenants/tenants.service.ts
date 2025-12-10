@@ -7,6 +7,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateTenantDto, InviteTenantMemberDto, UpdateMemberRoleDto } from './dto';
 import { planTierFromValue, PlanTier } from '../../common/enums/plan-tier.enum';
 import { tenantLimitForPlan } from '../../common/utils/tenant-plan.util';
+import { PlanTierService } from '../../common/services/plan-tier.service';
 
 export interface TenantWithSettings extends Tenant {
   settings?: TenantSetting | null;
@@ -17,6 +18,7 @@ export class TenantsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly planTierService: PlanTierService,
   ) {}
 
   async createTenant(userId: string, dto: CreateTenantDto, ipAddress?: string) {
@@ -34,7 +36,7 @@ export class TenantsService {
     const currentCount = await this.prisma.userTenant.count({
       where: { userId },
     });
-    const allowed = this.getTenantLimit(planTierFromValue(user.planTier));
+    const allowed = await this.planTierService.getMaxTenants(user.planTier);
     if (currentCount >= allowed) {
       throw new HttpException(
         {
@@ -84,7 +86,11 @@ export class TenantsService {
       capabilityFlags,
     });
 
-    return this.loadTenantWithSettings(tenant.id);
+    const tenantWithSettings = await this.loadTenantWithSettings(tenant.id);
+    return {
+      ...tenantWithSettings,
+      role: 'owner',
+    };
   }
 
   async listTenants(userId: string) {
@@ -168,7 +174,7 @@ export class TenantsService {
     return tenant as TenantWithSettings;
   }
 
-  private async ensureMembership(userId: string, tenantId: string) {
+  async ensureMembership(userId: string, tenantId: string) {
     const membership = await this.prisma.userTenant.findFirst({
       where: { userId, tenantId },
     });
@@ -194,8 +200,8 @@ export class TenantsService {
 
     // Check plan limits before allowing invite
     const tenant = await this.loadTenantWithSettings(tenantId);
-    const planTier = planTierFromValue(tenant.settings?.planTier || 'starter');
-    const memberLimit = tenantLimitForPlan(planTier, this.configService);
+    const planTierName = tenant.settings?.planTier || 'starter';
+    const memberLimit = await this.planTierService.getMaxTeamMembers(planTierName);
 
     // Count only ACCEPTED members (pending invites do not count toward the limit)
     const acceptedCount = await this.prisma.tenantMember.count({
@@ -206,7 +212,7 @@ export class TenantsService {
       throw new HttpException(
         {
           code: 'MEMBER_LIMIT_REACHED',
-          message: `Plan tier ${planTier} allows only ${memberLimit} member${memberLimit === 1 ? '' : 's'}`,
+          message: `Plan tier ${planTierName} allows only ${memberLimit} member${memberLimit === 1 ? '' : 's'}`,
         },
         HttpStatus.FORBIDDEN,
       );

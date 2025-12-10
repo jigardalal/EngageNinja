@@ -22,15 +22,16 @@ model User {
 }
 
 model Tenant {
-  id            String          @id @default(uuid()) @map("id")
-  name          String          @map("name")
-  settings      TenantSetting?
-  userTenants   UserTenant[]
-  tenantMembers TenantMember[]
-  usersLastUsed User[]          @relation("LastUsedTenant")
-  auditLogs     AuditLog[]
-  createdAt     DateTime        @default(now()) @map("created_at")
-  updatedAt     DateTime        @updatedAt @map("updated_at")
+  id             String          @id @default(uuid()) @map("id")
+  name           String          @map("name")
+  settings       TenantSetting?
+  userTenants    UserTenant[]
+  tenantMembers  TenantMember[]
+  usersLastUsed  User[]          @relation("LastUsedTenant")
+  auditLogs      AuditLog[]
+  usageCounters  UsageCounter[]
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
 
   @@map("tenants")
 }
@@ -98,4 +99,40 @@ model TenantMember {
   @@index([inviteToken], map: "tenant_members_invite_token_idx")
   @@unique([tenantId, email], map: "tenant_members_tenant_email_unique")
   @@map("tenant_members")
+}
+
+model PlanTier {
+  id                  String   @id @default(uuid()) @map("id")
+  name                String   @unique @map("name")
+  displayName         String   @map("display_name")
+  maxTenants          Int      @map("max_tenants")
+  maxTeamMembers      Int      @map("max_team_members")
+  maxMonthlySends     Int      @map("max_monthly_sends")
+  maxAiTokensMonthly  Int      @map("max_ai_tokens_monthly")
+  availableChannels   String[] @map("available_channels")
+  capabilityFlags     String[] @map("capability_flags")
+  metadata            Json?    @map("metadata")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@index([name], map: "plan_tiers_name_idx")
+  @@map("plan_tiers")
+}
+
+model UsageCounter {
+  id          String   @id @default(uuid()) @map("id")
+  tenantId    String   @map("tenant_id")
+  usageType   String   @map("usage_type")
+  periodStart DateTime @map("period_start")
+  periodEnd   DateTime @map("period_end")
+  count       Int      @default(0) @map("count")
+  metadata    Json?    @map("metadata")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, usageType, periodStart], map: "usage_counters_tenant_type_period_idx")
+  @@index([tenantId], map: "usage_counters_tenant_id_idx")
+  @@index([periodStart, periodEnd], map: "usage_counters_period_idx")
+  @@map("usage_counters")
 }

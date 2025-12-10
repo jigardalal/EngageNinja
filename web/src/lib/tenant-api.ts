@@ -69,9 +69,10 @@ export async function switchTenant(tenantId: string): Promise<AuthSession> {
 }
 
 export async function fetchCurrentUser(): Promise<AuthSession> {
-  return fetchJson<AuthSession>('/auth/me', {
+  const response = await fetchJson<{ user: AuthSession }>('/auth/me', {
     method: 'GET',
   });
+  return response.user;
 }
 
 export enum TenantRole {

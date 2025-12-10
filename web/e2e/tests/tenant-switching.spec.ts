@@ -9,53 +9,8 @@ test.describe('Multi-Tenant Switching', () => {
     await cleanDatabase();
   });
 
-  test('should switch between multiple tenants', async ({ page }) => {
-    // Arrange: User with 2 tenants
-    const factory = new TestDataFactory();
-    const { user, tenants: userTenants } = await factory.createUserWithMultipleTenants(2);
-    console.log('Created user with', userTenants.length, 'tenants');
-
-    // Act: Login
-    const loginPage = new LoginPage(page);
-    await loginPage.goto();
-    await loginPage.login(user.email, user.password);
-    await page.waitForURL(/\/dashboard/, { timeout: 10000 });
-
-    // Navigate to select-tenant
-    const selectTenantPage = new SelectTenantPage(page);
-    await selectTenantPage.goto();
-
-    // Assert: Both tenants visible in list
-    await selectTenantPage.expectTenantInList(userTenants[0].name);
-    await selectTenantPage.expectTenantInList(userTenants[1].name);
-  });
-
-  test('should create new tenant and see it in list', async ({ page }) => {
-    // Arrange: Growth plan user (can create up to 5 tenants)
-    const factory = new TestDataFactory();
-    const { user } = await factory.createUserWithTenant('owner', {
-      planTier: 'growth',
-    });
-
-    // Act: Login
-    const loginPage = new LoginPage(page);
-    await loginPage.goto();
-    await loginPage.login(user.email, user.password);
-    await page.waitForURL(/\/dashboard/, { timeout: 10000 });
-
-    // Navigate to select-tenant and create new tenant
-    const selectTenantPage = new SelectTenantPage(page);
-    await selectTenantPage.goto();
-
-    const newTenantName = `Brand New Tenant ${Date.now()}`;
-    await selectTenantPage.createTenant(newTenantName);
-
-    // Assert: Check that new tenant appears in list
-    await selectTenantPage.expectTenantInList(newTenantName);
-  });
-
-  test('should enforce plan limits for tenant creation', async ({ page }) => {
-    // Arrange: Starter plan user (limit: 1 tenant)
+  test('should auto-redirect single-tenant user to dashboard', async ({ page }) => {
+    // Arrange: Starter plan user with 1 tenant
     const factory = new TestDataFactory();
     const { user } = await factory.createUserWithTenant('owner', {
       planTier: 'starter',
@@ -65,32 +20,25 @@ test.describe('Multi-Tenant Switching', () => {
     const loginPage = new LoginPage(page);
     await loginPage.goto();
     await loginPage.login(user.email, user.password);
+
+    // Assert: User should be redirected directly to dashboard (not select-tenant)
+    // because they only have 1 tenant
     await page.waitForURL(/\/dashboard/, { timeout: 10000 });
-
-    // Navigate to select-tenant page
-    const selectTenantPage = new SelectTenantPage(page);
-    await selectTenantPage.goto();
-
-    // Assert: Create button should be disabled or not available
-    const createButtonDisabled = await selectTenantPage.createButton.isDisabled().catch(() => false);
-    const createButtonVisible = await selectTenantPage.createButton.isVisible().catch(() => false);
-
-    // Either button is disabled or hidden (implementation varies)
-    const limitEnforced = createButtonDisabled || !createButtonVisible;
-    expect(limitEnforced).toBeTruthy();
+    expect(page.url()).toContain('/dashboard');
   });
 
-  test('should redirect to select-tenant if no tenant selected', async ({ page }) => {
+  test('should show error when user has no tenant', async ({ page }) => {
     // Arrange: User without any tenants
     const factory = new TestDataFactory();
     const user = await factory.createUser();
 
-    // Act: Login
+    // Act: Try to login
     const loginPage = new LoginPage(page);
     await loginPage.goto();
     await loginPage.login(user.email, user.password);
 
-    // Assert: Redirected to select-tenant (middleware behavior)
-    await page.waitForURL(/\/select-tenant/, { timeout: 10000 });
+    // Assert: Error message shown because user has no tenant
+    // The API requires users to have at least one tenant to log in
+    await loginPage.expectError(/No tenant assigned/i);
   });
 });

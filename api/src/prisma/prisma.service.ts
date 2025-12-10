@@ -21,7 +21,7 @@ export class PrismaService
   constructor() {
     super({
       adapter: new PrismaPg({ connectionString: databaseUrl }),
-    });
+    } as any);
   }
 
   async onModuleInit() {

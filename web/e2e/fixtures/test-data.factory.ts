@@ -55,7 +55,10 @@ export class TestDataFactory {
     };
   }
 
-  async createTenant(overrides?: Partial<TestTenant>): Promise<TestTenant> {
+  async createTenant(
+    overrides?: Partial<TestTenant>,
+    defaultPlanTier?: TestUser['planTier']
+  ): Promise<TestTenant> {
     this.tenantCounter++;
     const name = overrides?.name || `Test Tenant ${this.tenantCounter}`;
 
@@ -64,7 +67,7 @@ export class TestDataFactory {
         name,
         settings: {
           create: {
-            planTier: overrides?.settings?.planTier || 'starter',
+            planTier: overrides?.settings?.planTier || defaultPlanTier || 'starter',
             region: overrides?.settings?.region || 'us-east-1',
             capabilityFlags: overrides?.settings?.capabilityFlags || ['core'],
           },
@@ -92,7 +95,17 @@ export class TestDataFactory {
     tenantOverrides?: Partial<TestTenant>
   ): Promise<TestUserWithTenant> {
     const user = await this.createUser(userOverrides);
-    const tenant = await this.createTenant(tenantOverrides);
+
+    // Automatically match tenant planTier to user's planTier if not explicitly provided
+    const tenantWithPlanTier: Partial<TestTenant> = {
+      ...tenantOverrides,
+      settings: {
+        ...tenantOverrides?.settings,
+        planTier: tenantOverrides?.settings?.planTier ?? user.planTier,
+      },
+    };
+
+    const tenant = await this.createTenant(tenantWithPlanTier, user.planTier);
 
     await this.prisma.userTenant.create({
       data: {
@@ -159,5 +172,12 @@ export class TestDataFactory {
     });
 
     return tenant;
+  }
+
+  async setUserLastTenant(userId: string, tenantId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { lastUsedTenantId: tenantId },
+    });
   }
 }

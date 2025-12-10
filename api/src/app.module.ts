@@ -5,9 +5,11 @@ import { ThrottlerModule } from '@nestjs/throttler';
 
 import { AppThrottlerGuard } from './common/guards/app-throttler.guard';
 import { ActiveTenantGuard } from './auth/guards/active-tenant.guard';
+import { FeatureGuard } from './common/guards/feature.guard';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
@@ -22,6 +24,7 @@ import { TenantsModule } from './modules/tenants/tenants.module';
       },
     ]),
     PrismaModule,
+    CommonModule,
     AuthModule,
     TenantsModule,
   ],
@@ -34,6 +37,10 @@ import { TenantsModule } from './modules/tenants/tenants.module';
     {
       provide: APP_GUARD,
       useClass: ActiveTenantGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: FeatureGuard,
     },
   ],
 })

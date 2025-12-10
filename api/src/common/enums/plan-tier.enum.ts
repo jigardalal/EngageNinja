@@ -1,7 +1,9 @@
 export enum PlanTier {
+  Free = 'free',
   Starter = 'starter',
   Growth = 'growth',
   Agency = 'agency',
+  Enterprise = 'enterprise',
 }
 
 export function planTierFromValue(value?: string | null): PlanTier {

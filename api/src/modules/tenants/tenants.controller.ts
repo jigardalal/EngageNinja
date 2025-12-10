@@ -18,11 +18,15 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { TenantsService } from './tenants.service';
 import { CreateTenantDto, InviteTenantMemberDto, UpdateMemberRoleDto } from './dto';
 import type { TenantWithSettings } from './tenants.service';
+import { QuotaService } from '../../common/services/quota.service';
 
 @Controller('tenants')
 @UseGuards(JwtAuthGuard)
 export class TenantsController {
-  constructor(private readonly tenantsService: TenantsService) {}
+  constructor(
+    private readonly tenantsService: TenantsService,
+    private readonly quotaService: QuotaService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -102,5 +106,15 @@ export class TenantsController {
     @Ip() ip?: string,
   ) {
     await this.tenantsService.revokeMember(user.userId, tenantId, memberId, ip);
+  }
+
+  @Get(':tenantId/usage')
+  async getUsage(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() user: AuthContext,
+  ) {
+    await this.tenantsService.ensureMembership(user.userId, tenantId);
+    const usage = await this.quotaService.getAllUsage(tenantId);
+    return { data: usage };
   }
 }
