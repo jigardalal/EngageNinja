@@ -143,6 +143,8 @@ So that my actions are scoped to that tenant.
 **When** I call a protected route  
 **Then** I’m prompted to select a tenant
 
+**Platform note:** Tenant creation UI is reserved for platform admins; regular signups receive a platform-assigned tenant automatically, and the switcher UI only surfaces once a user owns more than two tenants (single-tenant users land straight on the dashboard, zero-tenant users see an informative “No tenant assigned” prompt to contact support).
+
 ### Story 1.3: Tenant Roles & Member Management
 
 As a tenant admin/owner,
@@ -206,6 +208,8 @@ So that data and actions never cross tenants.
 ### Epic 2: Plans & Quotas Governance
 Users select a plan; the system enforces tier limits and shows guidance/errors; tenant message pools by tier.  
 **FRs covered:** FR3, FR33, FR34, FR35
+
+Implementation note: The five-tier PlanTier/UsageCounter schema (Free/Starter/Growth/Agency/Enterprise) drives `PlanTierService`, and runtime gating uses `FeatureGuard` + `@RequireFeature` to check capability flags before `QuotaService` validates resource pools. Tenant guards (`ActiveTenantGuard`) still ensure every check runs inside the active tenant context so resource quotas follow tenant isolation.
 
 ### Story 2.1: Plan Selection & Change
 
@@ -816,6 +820,8 @@ So that I can investigate issues.
 As a platform admin,
 I want to inspect channels, API keys, and recent sends for a tenant,
 So that I can diagnose issues.
+
+This persona also owns tenant creation and is responsible for the tenant-picker gating: only platform-admin-provisioned tenants exist for users, and the picker appears only when a user has more than two tenant associations.
 
 **Acceptance Criteria:**
 

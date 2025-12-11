@@ -11,6 +11,7 @@ import {
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import type { AuthContext } from '../../auth/auth.types';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { ApiKeyAuthGuard } from '../../auth/guards/api-key-auth.guard';
 import { RequireFeature } from '../../common/decorators/require-feature.decorator';
 import { QuotaService, UsageType } from '../../common/services/quota.service';
 import { QuotaExceededException } from '../../common/exceptions/quota-exceeded.exception';
@@ -19,7 +20,7 @@ import { MessagesService, type MessageResponse } from './messages.service';
 import { SendWhatsAppDto, SendEmailDto } from './dto';
 
 @Controller('tenants/:tenantId/messages')
-@UseGuards(JwtAuthGuard)
+@UseGuards(ApiKeyAuthGuard, JwtAuthGuard)
 export class MessagesController {
   constructor(
     private readonly messagesService: MessagesService,
@@ -35,8 +36,10 @@ export class MessagesController {
     @Body() dto: SendWhatsAppDto,
     @CurrentUser() user: AuthContext,
   ): Promise<MessageResponse> {
-    // Verify membership
-    await this.tenantsService.ensureMembership(user.userId, tenantId);
+    // Verify membership (skip for API key auth, which already validates the key)
+    if (!user.userId.startsWith('api-key-')) {
+      await this.tenantsService.ensureMembership(user.userId, tenantId);
+    }
 
     // Check quota before sending
     const quotaCheck = await this.quotaService.checkQuota(
@@ -74,8 +77,10 @@ export class MessagesController {
     @Body() dto: SendEmailDto,
     @CurrentUser() user: AuthContext,
   ): Promise<MessageResponse> {
-    // Verify membership
-    await this.tenantsService.ensureMembership(user.userId, tenantId);
+    // Verify membership (skip for API key auth, which already validates the key)
+    if (!user.userId.startsWith('api-key-')) {
+      await this.tenantsService.ensureMembership(user.userId, tenantId);
+    }
 
     // Check quota before sending
     const quotaCheck = await this.quotaService.checkQuota(

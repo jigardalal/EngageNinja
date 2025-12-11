@@ -69,10 +69,17 @@ export async function switchTenant(tenantId: string): Promise<AuthSession> {
 }
 
 export async function fetchCurrentUser(): Promise<AuthSession> {
-  const response = await fetchJson<{ user: AuthSession }>('/auth/me', {
-    method: 'GET',
+  const response = await fetch(`${API_BASE_URL}/auth/me`, {
+    credentials: 'include',
+    headers: defaultHeaders,
   });
-  return response.user;
+
+  const body = await response.json();
+  if (!response.ok) {
+    throw new Error(body?.error?.message || 'Failed to fetch current user');
+  }
+
+  return body.user;
 }
 
 export enum TenantRole {
@@ -119,6 +126,46 @@ export async function updateMemberRole(
 
 export async function revokeMember(tenantId: string, memberId: string): Promise<void> {
   return fetchJson<void>(`/tenants/${tenantId}/members/${memberId}`, {
+    method: 'DELETE',
+  });
+}
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  description?: string;
+  planTier: string;
+  status: 'active' | 'revoked';
+  lastUsedAt?: string | null;
+  lastRotatedAt?: string | null;
+  createdAt: string;
+  lastUsed?: number | null;
+}
+
+export interface CreateApiKeyResponse {
+  id: string;
+  secret: string;
+  name: string;
+  createdAt: string;
+  status: 'active';
+}
+
+export async function createApiKey(
+  tenantId: string,
+  payload: { name: string; description?: string; scopeFlags?: string[] }
+): Promise<CreateApiKeyResponse> {
+  return fetchJson<CreateApiKeyResponse>(`/tenants/${tenantId}/api-keys`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listApiKeys(tenantId: string): Promise<ApiKey[]> {
+  return fetchJson<ApiKey[]>(`/tenants/${tenantId}/api-keys`);
+}
+
+export async function revokeApiKey(tenantId: string, keyId: string): Promise<{ status: string; message: string }> {
+  return fetchJson<{ status: string; message: string }>(`/tenants/${tenantId}/api-keys/${keyId}`, {
     method: 'DELETE',
   });
 }

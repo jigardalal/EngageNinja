@@ -92,13 +92,14 @@ Edge cases handled: misconfigured tenant flagged; tenant over quota; client revo
 
 **Journey 4: Platform Admin / Super Admin – Support, Impersonation & Recovery**  
 Searches tenants by name/email/domain. Impersonates tenant user to inspect channels, API keys, last 50 sends. Can disable a channel, re-trigger failed webhooks, and view system health dashboard.  
-Edge cases handled: WA provider outage → surfaced with mitigation; failed webhook flood → throttle/retry; spammy content/abuse → block + log; number blocked → alert and guidance; billing delinquency → controlled shutdown of sending.
+Edge cases handled: WA provider outage → surfaced with mitigation; failed webhook flood → throttle/retry; spammy content/abuse → block + log; number blocked → alert and guidance; billing delinquency → controlled shutdown of sending.  
+<br/>**Process detail:** Platform admins are the only persona that can create tenants; signup creates and surfaces the assigned tenant automatically without user-facing tenant creation steps. The tenant picker only appears when a logged-in user belongs to more than two tenants; single-tenant users land directly on `/dashboard` and users without any tenant receive a clear “No tenant assigned” guidance tied to support/platform-admin assistance.
 
 ### Journey Requirements Summary
 - Onboarding & Setup: Tenant creation, login, plan selection, WA connect wizard, template sync, CSV/manual contacts, dedup and consent checks.
 - Campaign & Resend: Template selection/variable mapping, list broadcast, live sent/delivered/read, resend to non-readers with timing guards, uplift comparison.
 - Dashboards & Reporting: Per-tenant campaign stats, read/delivered views, resend usage, export/share reports; simple SMB dashboard; agency multi-tenant overview.
-- Access & Control: Multi-tenant switcher; agency staff access; impersonation; channel enable/disable; API keys; quota and misuse controls.
+- Access & Control: Multi-tenant switcher; agency staff access; impersonation; channel enable/disable; API keys; quota and misuse controls; tenant creation flows reside with platform admins and the tenant picker only appears when a user owns more than two tenants (single-tenant users go straight to dashboard, zero-tenant users see support guidance).
 - Error Handling & Recovery: Template approval state, delivery failures surfaced, WA token invalid, verification delays, webhook retry/flood controls, abuse/spam handling, billing delinquency controls.
 
 ## Innovation & Novel Patterns
@@ -143,11 +144,13 @@ Edge cases handled: WA provider outage → surfaced with mitigation; failed webh
 - No full IAM/policy engine in MVP; keep scopes simple and enforce at service boundaries.
 
 ### Subscription Tiers & Gating
+- Free/Starter/Growth/Agency/Enterprise tiers live in the PlanTier table seeded via the plan-tier redesign; each tier carries capability flags (API, webhooks, quota-based AI, etc.), per-tenant pools, and usage limits stored in UsageCounter so quota enforcement can run in `QuotaService`.
+- Runtime enforcement happens through `FeatureGuard` + `@RequireFeature`, which reads capability flags from the tenant’s PlanTier and blocks requests (403 with upgrade guidance) before `QuotaService` checks the relevant UsageCounter, ensuring tenant guards run before resource quotas. `ActiveTenantGuard` also ensures each API call/load is scoped to the requesting tenant before quota evaluation (no cross-tenant leakage).
 - Starter (SMB): 1 tenant; 1 WA number; WA only; <=10k sends/mo; 1–3 users; resend; basic dashboards; no email/API/advanced automation; limited AI quota.
 - Growth (SMB/small agency): 1 tenant; WA + Email; 50k–100k sends/mo; 5–10 users; resend; AI campaign gen (quota); basic automation (Phase-2); transactional APIs; webhooks; CSV imports.
 - Agency/Pro: Multi-tenant access; WA + Email; per-tenant pools; 25–100 users; higher AI quotas; API + webhooks; advanced reports; priority support; future Meta Ads, CRM adapters, Inbox.
 - Enterprise (later): SSO/SAML, dedicated IP, regional residency, custom compliance, SLAs.
-- Gate by: channels (WA vs WA+Email), monthly sends, AI tokens, users, tenants (agency), API/webhooks, data export; enforced via subscriptions + runtime feature flags.
+- Gate by: channels (WA vs WA+Email), monthly sends, AI tokens, users, tenants (agency), API/webhooks, data export; enforced via subscriptions + runtime feature flags sourced from the PlanTier table.
 
 ### Integrations (Phase-1 / Near-Term)
 - WhatsApp: Meta WhatsApp Cloud API (primary). Optionally Gupshup/360dialog only if onboarding blockers arise.
@@ -234,7 +237,7 @@ Edge cases handled: WA provider outage → surfaced with mitigation; failed webh
 ## Functional Requirements
 
 ### Onboarding & Access
-- FR1: Users can sign up, create a tenant, and sign in with tenant-scoped access.
+- FR1: Users can sign up, be auto-assigned a platform-admin-created tenant, and sign in with tenant-scoped access; tenant creation UI is restricted to platform admins, and the tenant picker surfaces only when a user owns more than two tenants, otherwise they land directly on the dashboard (or see “no tenant assigned” guidance when zero tenants exist).
 - FR2: Users can connect a WhatsApp number via Meta Cloud and view connection status.
 - FR3: Users can select a plan/tier that gates features and quotas.
 - FR4: Users can invite/manage tenant members with assigned tenant roles.

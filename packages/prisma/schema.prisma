@@ -22,16 +22,17 @@ model User {
 }
 
 model Tenant {
-  id             String          @id @default(uuid()) @map("id")
-  name           String          @map("name")
+  id             String            @id @default(uuid()) @map("id")
+  name           String            @map("name")
   settings       TenantSetting?
   userTenants    UserTenant[]
   tenantMembers  TenantMember[]
-  usersLastUsed  User[]          @relation("LastUsedTenant")
+  usersLastUsed  User[]            @relation("LastUsedTenant")
   auditLogs      AuditLog[]
   usageCounters  UsageCounter[]
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @updatedAt @map("updated_at")
+  apiKeys        TenantApiKey[]
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
 
   @@map("tenants")
 }
@@ -135,4 +136,26 @@ model UsageCounter {
   @@index([tenantId], map: "usage_counters_tenant_id_idx")
   @@index([periodStart, periodEnd], map: "usage_counters_period_idx")
   @@map("usage_counters")
+}
+
+model TenantApiKey {
+  id             String    @id @default(uuid()) @map("id")
+  tenantId       String    @map("tenant_id")
+  name           String    @map("name")
+  description    String?   @map("description")
+  hashedSecret   String    @map("hashed_secret")
+  planTier       String    @map("plan_tier")
+  scopeFlags     String[]  @map("scope_flags")
+  revokedAt      DateTime? @map("revoked_at")
+  revokedBy      String?   @map("revoked_by")
+  lastUsedAt     DateTime? @map("last_used_at")
+  lastRotatedAt  DateTime? @map("last_rotated_at")
+  createdBy      String    @map("created_by")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId], map: "tenant_api_keys_tenant_id_idx")
+  @@index([tenantId, revokedAt], map: "tenant_api_keys_tenant_id_status_idx")
+  @@map("tenant_api_keys")
 }
