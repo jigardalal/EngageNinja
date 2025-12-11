@@ -1,0 +1,369 @@
+You are a senior SaaS product marketing designer and full-stack web developer.
+
+Design and generate a complete, production-ready, responsive marketing website for a B2B SaaS product named “EngageNinja”.
+
+EngageNinja is an AI-first, WhatsApp-first customer engagement platform for agencies and WhatsApp-heavy SMBs. It competes with Brevo.com and Interakt.com, but differentiates with:
+- WhatsApp-first UX (not an email retrofit)
+- Built-in AI campaign generation
+- One-click resend to non-readers
+- Built-in uplift & ROI proof
+- Agency-native multi-tenant operations
+
+The site’s goal is **conversion** (free trial / book demo), **trust**, and **clear differentiation**.
+
+---
+
+### 🧱 TECH STACK & OUTPUT FORMAT
+
+- Use **Next.js + React + Tailwind CSS**
+- Use **component-based structure**
+- Provide **fully working page layouts**
+- Include **mock data and placeholder images/illustrations**
+- SEO optimized
+- Accessibility compliant (WCAG AA)
+- Output complete files where possible: `app/layout.tsx`, `app/page.tsx`, `app/(marketing)/*`, `components/*`
+- Use clean professional SaaS UI styling similar to Brevo + Linear + Stripe
+
+---
+
+### 🎨 VISUAL STYLE & THEMING
+
+Overall style:
+- **Modern SaaS with glassmorphism & “liquid” gradients**
+- Soft, blurred panels on a gradient background
+- Subtle frosted-glass cards with borders and shadows
+- Plenty of icons and simple illustrations to support copy (can be SVG placeholders)
+
+Light/Dark theme:
+- Implement **full light + dark theme support** using Tailwind and CSS variables (or `next-themes` style approach).
+- Add a **theme toggle** (sun/moon icon) in the header.
+- Make sure all sections, cards, buttons, and text look good in both themes.
+- Persist theme preference in local storage.
+
+Color direction:
+- Trustful teal/green/blue primary
+- Highlight states for success, warning, error
+- Ensure contrast ratios are accessible in both light and dark modes.
+
+---
+
+### 📱 RESPONSIVE & INTERACTION
+
+- **Mobile-first, fully responsive** (mobile, tablet, desktop)
+- Navigation collapses into a clean mobile menu with the main CTAs easily visible.
+- Sections stack gracefully on small screens.
+- Keep tap targets large enough on mobile.
+- Use simple, tasteful animations:
+  - Subtle hover effects on cards/buttons
+  - Gentle movement of background “liquid” shapes
+  - Animated number counters for metrics
+
+---
+
+## 🧠 CORE VALUE PROPOSITION
+
+Hero message:
+> “Send with certainty. Resend with intelligence. Prove uplift.”
+
+Subtext:
+> AI-powered WhatsApp & Email marketing with built-in resend intelligence and real ROI visibility.
+
+Primary CTA:
+- “Start Free”
+Secondary CTA:
+- “Book a Demo”
+
+---
+
+## 💰 PRICING TIERS (INCLUDE ALL)
+
+Design a **Pricing** section and full **Pricing page** with these tiers:
+
+1. **Free**
+   - WhatsApp only
+   - Up to 1,000 messages/month
+   - 1 user
+   - Basic live status dashboard
+   - Community support
+
+2. **Starter**
+   - WhatsApp only
+   - Up to 10,000 messages/month
+   - Up to 3 users
+   - Basic dashboards
+   - Simple resend
+   - Email support
+
+3. **Growth**
+   - WhatsApp + Email
+   - Up to 100,000 messages/month
+   - Up to 10 users
+   - AI campaign generation
+   - API access & webhooks
+   - Advanced resend & uplift analytics
+
+4. **Agency / Pro**
+   - Multi-tenant (multiple client accounts)
+   - Higher message limits
+   - Impersonation and agency ops
+   - Cross-tenant ROI dashboards
+   - Priority support
+
+5. **Enterprise**
+   - Custom limits
+   - SSO, SLAs, dedicated IP
+   - Data residency options
+   - Custom onboarding
+   - Dedicated CSM
+
+Include:
+- Monthly / Yearly toggle with price animation
+- Highlight “Free” as entry, “Growth” or “Agency” as “Most popular”
+
+---
+
+## 🗺️ WEBSITE STRUCTURE (BUILD ALL PAGES)
+
+### 1. Homepage (`/`)
+
+Sections (in this order):
+
+1. **Hero**
+   - Large headline + subheadline
+   - Two CTAs: “Start Free” and “Book a Demo”
+   - Right side: visual mock of live WhatsApp campaign panel with “Sent / Delivered / Read / Resend / Uplift” in a glassmorphic card
+   - Icons and subtle animated liquid background shapes
+
+2. **Live Status & Uplift Visualization**
+   - A horizontal or 2-column section showing:
+     - Sent → Delivered → Read → Resend → Uplift flow
+   - Animated counters (e.g., 12,394 Sent; 97% Delivered; +18% Uplift)
+   - Use chips/badges with icons for each state
+
+3. **How It Works (3 Steps)**
+   - Step 1: Connect WhatsApp
+   - Step 2: Import contacts & generate AI copy
+   - Step 3: Send, resend, and prove uplift
+   - Each step has an icon and short description
+
+4. **AI Campaign Builder**
+   - Explain AI copy suggestions for WhatsApp and Email
+   - Card showing a prompt → AI-generated templates
+   - Icons representing “Ideas”, “Copy”, “Preview”
+
+5. **Resend & Uplift Proof**
+   - Side-by-side cards:
+     - Original campaign metrics
+     - After Resend metrics
+   - Highlight net uplift % and one-click resend UX
+
+6. **For Agencies**
+   - Multi-tenant overview card
+   - Tenant switcher mock UI
+   - Bullet points: impersonation, cross-tenant reporting, repeatable campaign patterns
+
+7. **For SMBs**
+   - Guided onboarding
+   - Simple dashboards
+   - “No marketing team needed” style copy
+
+8. **Platform Features Grid**
+   - 6–9 feature cards with icons:
+     - WhatsApp campaigns
+     - Email campaigns
+     - AI copy
+     - Resend & uplift
+     - Dashboards
+     - API / webhooks
+     - Audit & compliance
+     - Multi-tenant access
+     - Quotas & controls
+
+9. **Integrations**
+   - Logos / badges (placeholder) for:
+     - WhatsApp Cloud API
+     - Email providers (SES-style placeholder)
+     - CRMs / Ads (generic icons for “coming soon”)
+
+10. **Security & Compliance**
+    - Encryption
+    - Consent management
+    - Audit logs
+    - Role-based access
+    - GDPR-ready messaging
+
+11. **Pricing Preview**
+    - Teaser of the pricing tiers with “View full pricing” button
+
+12. **Testimonials**
+    - Carousel or grid of 3–4 customer quotes with avatars (mock)
+    - Emphasis on uplift, faster time-to-send, reduced tool stack
+
+13. **Final CTA**
+    - Strong final call to action with CTAs:
+      - “Start Free”
+      - “Talk to Sales”
+
+---
+
+### 2. Platform Page (`/platform`)
+
+Deep-dive into product capabilities:
+
+Sections:
+- Overview hero: “One platform for WhatsApp, Email, AI, and Resend”
+- WhatsApp campaigns: template approval, delivery/read states visualization
+- Email campaigns: basic email automation and broadcast
+- AI campaign generator: prompts → variations → approvals
+- Resend engine: rules, timing guardrails, non-readers-only
+- Dashboards & reporting: uplift cards, tenant-level KPIs
+- API & webhooks: developer-friendly, tenant API keys, rate limits
+- Multi-tenant & impersonation: agency view, impersonation banner, audit events
+- Quotas & plans: per-tier caps surfaced clearly in UI
+
+Use multiple icons and diagrams here.
+
+---
+
+### 3. Solutions Page (`/solutions`)
+
+Show solutions by segment with icons/mini-illustrations:
+
+Segments:
+- Agencies
+- E-commerce
+- Education
+- Real Estate
+- Healthcare
+- SaaS/Startups
+
+For each segment show:
+- 1–2 key use cases
+- Example WhatsApp + Email campaign
+- Short “Before EngageNinja / After EngageNinja” comparison
+
+---
+
+### 4. Pricing Page (`/pricing`)
+
+Full pricing layout with all tiers (Free, Starter, Growth, Agency, Enterprise):
+
+- Pricing cards with feature checklists
+- Monthly / Yearly toggle at top
+- “Most Popular” highlight
+- FAQ section below pricing, with common questions:
+  - “Can I start for free?”
+  - “Is WhatsApp approval included?”
+  - “Do you support agencies?”
+  - “Can I upgrade/downgrade anytime?”
+- Add animations on hover and when toggling plans (scale, shadow, etc.)
+
+---
+
+### 5. Resources Page (`/resources`)
+
+Sections:
+- Blog list (mock posts)
+- Guides: “WhatsApp Marketing 101”, “Resend Uplift Playbook”
+- Case studies cards
+- Webinars
+- API Docs teaser section
+- Help Center teaser
+
+---
+
+### 6. Security Page (`/security`)
+
+Sections:
+- Data protection (encryption, backups)
+- Compliance posture (GDPR-ready, SOC-2 in progress messaging)
+- Consent handling and audit logs
+- Role-based access & impersonation safety
+- Data retention and deletion policies
+
+---
+
+### 7. About Page (`/about`)
+
+Sections:
+- Mission & vision
+- Team cards (mock)
+- Values
+- Careers CTA
+- Press & updates
+
+---
+
+### 8. Contact / Book Demo (`/contact` or `/demo`)
+
+- Simple form (name, email, company, role, use case)
+- Option dropdown: “Agency / SMB / Startup / Other”
+- Booking CTA (link to placeholder calendar)
+- Support email links
+
+---
+
+## 🧭 GLOBAL ELEMENTS
+
+### Navbar
+- Logo (EngageNinja)
+- Links: Platform, Solutions, Pricing, Resources, Security, About
+- Right side:
+  - “Log in”
+  - Primary button: “Start Free”
+  - Theme toggle (light/dark with icon)
+
+### Footer
+- Product links, Company links, Resources, Legal
+- Social icons
+- Language selector (static for now)
+- Subtle glassmorphic footer background
+
+---
+
+## ⚙️ FUNCTIONAL & UX REQUIREMENTS
+
+- Sticky nav on desktop
+- Smooth scroll for same-page anchors
+- Animated metric counters and small micro-interactions
+- Good keyboard navigation & focus states
+- No overly heavy animations; keep performance good
+- Make sure both light and dark themes look polished and consistent
+
+---
+
+## 🛠️ DELIVERABLES
+
+Generate:
+- Global layout with theme provider and theme toggle
+- Full homepage implementation
+- Platform page
+- Pricing page
+- Solutions page
+- Resources page
+- Security page
+- About page
+- Contact/Demo page
+- Shared components:
+  - Navbar
+  - Footer
+  - HeroSection
+  - FeatureGrid
+  - PricingTable
+  - TestimonialCarousel
+  - MetricCounter
+  - IconBadge
+  - GlassmorphicCard
+- Tailwind config and base styles tailored for light/dark + glassmorphism
+
+---
+
+## 🚀 FINAL OBJECTIVE
+
+This website should:
+- Convert visitors into **Free tier signups** and **demo requests**
+- Compete visually and structurally with Brevo & Interakt
+- Clearly show **WhatsApp-first + AI + Resend uplift** advantage
+- Feel modern with **glassmorphism + liquid gradients**
+- Work beautifully in **both light and dark themes**
+- Be fully responsive and production-ready
