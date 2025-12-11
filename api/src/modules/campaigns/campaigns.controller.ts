@@ -13,6 +13,7 @@ import type { AuthContext } from '../../auth/auth.types';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RequireFeature } from '../../common/decorators/require-feature.decorator';
 import { QuotaService, UsageType } from '../../common/services/quota.service';
+import { QuotaExceededException } from '../../common/exceptions/quota-exceeded.exception';
 import { TenantsService } from '../tenants/tenants.service';
 import { CampaignsService, type CampaignResponse } from './campaigns.service';
 import { SendCampaignDto } from './dto';
@@ -49,8 +50,10 @@ export class CampaignsController {
     );
 
     if (!quotaCheck.allowed) {
-      throw new Error(
-        `Quota exceeded: ${quotaCheck.current}/${quotaCheck.limit} monthly sends used`,
+      throw new QuotaExceededException(
+        quotaCheck.current,
+        quotaCheck.limit,
+        'monthly_sends',
       );
     }
 
