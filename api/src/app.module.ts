@@ -9,6 +9,8 @@ import { FeatureGuard } from './common/guards/feature.guard';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
+import { MessagesModule } from './modules/messages/messages.module';
+import { CampaignsModule } from './modules/campaigns/campaigns.module';
 import { CommonModule } from './common/common.module';
 import { CronModule } from './cron/cron.module';
 
@@ -29,6 +31,8 @@ import { CronModule } from './cron/cron.module';
     CronModule,
     AuthModule,
     TenantsModule,
+    MessagesModule,
+    CampaignsModule,
   ],
   controllers: [],
   providers: [
