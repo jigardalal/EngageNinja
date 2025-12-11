@@ -52,7 +52,17 @@ export default function SelectTenantPage() {
               </p>
             </div>
             {tenant.settings?.planTier && (
-              <span className="rounded-full bg-emerald-100 px-3 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
+              <span
+                className={`rounded-full px-3 py-0.5 text-[11px] font-semibold ${
+                  tenant.settings.planTier === 'enterprise'
+                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-200'
+                    : tenant.settings.planTier === 'agency'
+                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200'
+                      : tenant.settings.planTier === 'growth'
+                        ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-200'
+                        : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200'
+                }`}
+              >
                 {planLabels[tenant.settings.planTier]}
               </span>
             )}

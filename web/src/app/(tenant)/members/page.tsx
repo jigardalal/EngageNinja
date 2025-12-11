@@ -12,7 +12,7 @@ import {
   AuthSession,
   fetchCurrentUser,
 } from '@/lib/tenant-api';
-import { planLabels, tenantLimitForPlan } from '@/lib/tenant-plan';
+import { planLabels, memberLimitForPlan } from '@/lib/tenant-plan';
 
 export default function MembersPage() {
   const params = useParams();
@@ -96,12 +96,12 @@ export default function MembersPage() {
 
   // Calculate guardrails
   const planTier = session?.planTier || 'starter';
-  const tenantLimit = tenantLimitForPlan(planTier);
+  const memberLimit = memberLimitForPlan(planTier);
   const pendingInvites = members.filter((m) => m.status === 'pending').length;
   const acceptedMembers = members.filter((m) => m.status === 'accepted').length;
-  const canInvite = acceptedMembers < tenantLimit;
+  const canInvite = acceptedMembers < memberLimit;
   const inviteDisabledReason = !canInvite
-    ? `Plan limit reached. Your ${planLabels[planTier]} plan allows ${tenantLimit} members.`
+    ? `Plan limit reached. Your ${planLabels[planTier]} plan allows ${memberLimit} members.`
     : null;
 
   return (
@@ -130,11 +130,11 @@ export default function MembersPage() {
                 {planLabels[planTier]} Plan
               </p>
               <p className="text-sm text-slate-600 mt-1">
-                {acceptedMembers} of {tenantLimit} members added
+                {acceptedMembers} of {memberLimit} members added
               </p>
             </div>
             <div className="text-right">
-              <p className="text-3xl font-bold text-emerald-600">{tenantLimit - acceptedMembers}</p>
+              <p className="text-3xl font-bold text-emerald-600">{memberLimit - acceptedMembers}</p>
               <p className="text-xs text-slate-600 uppercase tracking-wide">Slots Available</p>
             </div>
           </div>
@@ -155,13 +155,13 @@ export default function MembersPage() {
                   Member Limit Reached
                 </p>
                 <p className="text-sm text-amber-800 mb-2">
-                  Your {planLabels[planTier]} plan allows {tenantLimit} team {tenantLimit === 1 ? 'member' : 'members'}.
+                  Your {planLabels[planTier]} plan allows {memberLimit} team {memberLimit === 1 ? 'member' : 'members'}.
                   You've added {acceptedMembers} {acceptedMembers === 1 ? 'member' : 'members'}.
                 </p>
                 <div className="text-sm text-amber-800">
                   <p className="font-medium mb-1">Next steps to invite more members:</p>
                   <ul className="list-disc list-inside space-y-1 ml-2">
-                    <li>Upgrade to Growth plan (5 members) or Agency plan (25 members)</li>
+                    <li>Upgrade to Growth plan (10 members), Agency plan (100 members), or Enterprise plan (500 members)</li>
                     <li>Remove an existing member to free up a slot</li>
                     <li>Contact support if you need a custom plan</li>
                   </ul>

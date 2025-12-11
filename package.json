@@ -9,6 +9,7 @@
     "prepare-db": "pnpm --filter @engageninja/prisma prepare-db"
   },
   "dependencies": {
+    "@nestjs/schedule": "^6.1.0",
     "@prisma/adapter-pg": "7.1.0",
     "date-fns": "^4.1.0"
   }

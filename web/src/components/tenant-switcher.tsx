@@ -64,7 +64,17 @@ export default function TenantSwitcher() {
       >
         <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Tenant</span>
         <span className="font-semibold">{displayName}</span>
-        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-800/40 dark:text-emerald-200">
+        <span
+          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+            activeTenant?.settings?.planTier === 'enterprise'
+              ? 'bg-purple-100 text-purple-700 dark:bg-purple-800/40 dark:text-purple-200'
+              : activeTenant?.settings?.planTier === 'agency'
+                ? 'bg-blue-100 text-blue-700 dark:bg-blue-800/40 dark:text-blue-200'
+                : activeTenant?.settings?.planTier === 'growth'
+                  ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-800/40 dark:text-cyan-200'
+                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-800/40 dark:text-emerald-200'
+          }`}
+        >
           {planBadge}
         </span>
         <span aria-hidden className="text-slate-400 dark:text-slate-300">

@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { CommonModule } from './common/common.module';
+import { CronModule } from './cron/cron.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { CommonModule } from './common/common.module';
     ]),
     PrismaModule,
     CommonModule,
+    CronModule,
     AuthModule,
     TenantsModule,
   ],
