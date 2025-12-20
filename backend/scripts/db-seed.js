@@ -501,6 +501,223 @@ function copyGlobalTagsToTenant(tenantUuid) {
     console.log('  ✓ Inserted Email channel for demo tenant');
   }
 
+  // 10. Seed Tenant Business Info (for 10DLC)
+  console.log('\n🏢 Seeding tenant business info (for 10DLC)...');
+
+  const businessInfo = [
+    {
+      tenant_id: tenantId.demo,
+      legal_business_name: 'EngageNinja Demo Corp',
+      dba_name: 'EngageNinja',
+      business_website: 'https://engageninja.local',
+      business_type: 'corporation',
+      industry_vertical: 'software',
+      business_registration_number: '12-3456789',
+      country: 'US',
+      business_address: '123 Tech Boulevard',
+      business_city: 'San Francisco',
+      business_state: 'CA',
+      business_zip: '94103',
+      owner_name: 'John Doe',
+      owner_title: 'CEO',
+      owner_email: 'owner@engageninja.local',
+      owner_phone: '+14155555555',
+      business_contact_name: 'Support Team',
+      business_contact_email: 'support@engageninja.local',
+      business_contact_phone: '+14155555556',
+      monthly_sms_volume_estimate: 10000,
+      use_case_description: 'Customer engagement and transactional messages',
+      sms_opt_in_language: 'By replying to this message with any text, you consent to receive recurring SMS messages from EngageNinja.',
+      gdpr_compliant: 0,
+      tcpa_compliant: 1,
+      verification_status: 'verified',
+      verified_by_admin: userId.platformAdmin,
+      verified_at: now
+    },
+    {
+      tenant_id: tenantId.beta,
+      legal_business_name: 'Beta Test LLC',
+      dba_name: 'Beta Test',
+      business_website: 'https://beta.engageninja.local',
+      business_type: 'llc',
+      industry_vertical: 'consulting',
+      business_registration_number: '98-7654321',
+      country: 'US',
+      business_address: '456 Enterprise Way',
+      business_city: 'New York',
+      business_state: 'NY',
+      business_zip: '10001',
+      owner_name: 'Jane Smith',
+      owner_title: 'Founder',
+      owner_email: 'owner@beta.local',
+      owner_phone: '+12125555555',
+      business_contact_name: null,
+      business_contact_email: null,
+      business_contact_phone: null,
+      monthly_sms_volume_estimate: 5000,
+      use_case_description: 'Marketing campaigns and customer notifications',
+      sms_opt_in_language: 'Standard SMS consent language',
+      gdpr_compliant: 0,
+      tcpa_compliant: 1,
+      verification_status: 'pending',
+      verified_by_admin: null,
+      verified_at: null
+    }
+  ];
+
+  for (const biz of businessInfo) {
+    const existing = db.prepare('SELECT id FROM tenant_business_info WHERE tenant_id = ?').get(biz.tenant_id);
+    if (!existing) {
+      db.prepare(`
+        INSERT INTO tenant_business_info
+        (id, tenant_id, legal_business_name, dba_name, business_website, business_type, industry_vertical,
+         business_registration_number, country, business_address, business_city, business_state, business_zip,
+         owner_name, owner_title, owner_email, owner_phone, business_contact_name, business_contact_email, business_contact_phone,
+         monthly_sms_volume_estimate, use_case_description, sms_opt_in_language, gdpr_compliant, tcpa_compliant,
+         verification_status, verified_by_admin, verified_at, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        uuidv4(), biz.tenant_id, biz.legal_business_name, biz.dba_name, biz.business_website, biz.business_type, biz.industry_vertical,
+        biz.business_registration_number, biz.country, biz.business_address, biz.business_city, biz.business_state, biz.business_zip,
+        biz.owner_name, biz.owner_title, biz.owner_email, biz.owner_phone, biz.business_contact_name, biz.business_contact_email, biz.business_contact_phone,
+        biz.monthly_sms_volume_estimate, biz.use_case_description, biz.sms_opt_in_language, biz.gdpr_compliant, biz.tcpa_compliant,
+        biz.verification_status, biz.verified_by_admin, biz.verified_at, now, now
+      );
+    }
+  }
+  console.log('  ✓ Business info seeded for demo and beta tenants');
+
+  // 11. Seed 10DLC Brands (demo tenant has approved, beta is pending)
+  console.log('🔏 Seeding 10DLC brand registrations...');
+  const brands = [
+    {
+      tenant_id: tenantId.demo,
+      legal_business_name: 'EngageNinja Demo Corp',
+      dba_name: 'EngageNinja',
+      business_type: 'corporation',
+      industry_vertical: 'software',
+      business_registration_number: '12-3456789',
+      country: 'US',
+      business_address: '123 Tech Boulevard',
+      business_city: 'San Francisco',
+      business_state: 'CA',
+      business_zip: '94103',
+      owner_name: 'John Doe',
+      owner_title: 'CEO',
+      owner_email: 'owner@engageninja.local',
+      owner_phone: '+14155555555',
+      twilio_brand_sid: 'BRxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      twilio_brand_status: 'approved',
+      twilio_phone_number: '+1415555DEMO',
+      twilio_phone_number_sid: 'PNxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      twilio_phone_status: 'active',
+      campaign_type: 'marketing',
+      is_active: 1,
+      twilio_verified_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
+      twilio_approved_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days ago
+    }
+  ];
+
+  for (const brand of brands) {
+    const existing = db.prepare('SELECT id FROM tenant_10dlc_brands WHERE tenant_id = ? AND is_active = 1').get(brand.tenant_id);
+    if (!existing) {
+      db.prepare(`
+        INSERT INTO tenant_10dlc_brands
+        (id, tenant_id, legal_business_name, dba_name, business_type, industry_vertical, business_registration_number, country,
+         business_address, business_city, business_state, business_zip, owner_name, owner_title, owner_email, owner_phone,
+         twilio_brand_sid, twilio_brand_status, twilio_phone_number, twilio_phone_number_sid, twilio_phone_status,
+         campaign_type, is_active, twilio_verified_at, twilio_approved_at, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        uuidv4(), brand.tenant_id, brand.legal_business_name, brand.dba_name, brand.business_type, brand.industry_vertical,
+        brand.business_registration_number, brand.country, brand.business_address, brand.business_city, brand.business_state, brand.business_zip,
+        brand.owner_name, brand.owner_title, brand.owner_email, brand.owner_phone,
+        brand.twilio_brand_sid, brand.twilio_brand_status, brand.twilio_phone_number, brand.twilio_phone_number_sid, brand.twilio_phone_status,
+        brand.campaign_type, brand.is_active, brand.twilio_verified_at, brand.twilio_approved_at, now, now
+      );
+    }
+  }
+  console.log('  ✓ 10DLC brands seeded (demo: approved, beta: pending)');
+
+  // 12. Seed Tenant Channel Credentials V2 (Twilio SMS & AWS SES)
+  console.log('🔐 Seeding tenant channel credentials (Twilio SMS & AWS SES)...');
+
+  const twilioSmsCreds = encryptCredentials({
+    provider: 'twilio',
+    accountSid: process.env.TWILIO_ACCOUNT_SID || 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    authToken: process.env.TWILIO_AUTH_TOKEN || 'auth_token_here'
+  });
+
+  const awsSesCreds = encryptCredentials({
+    provider: 'aws_ses',
+    accessKeyId: process.env.SEED_AWS_ACCESS_KEY_ID || '[REDACTED]',
+    secretAccessKey: process.env.SEED_AWS_SECRET_ACCESS_KEY || '[REDACTED]',
+    region: process.env.SEED_AWS_REGION || 'us-east-2'
+  });
+
+  const credentialsList = [
+    {
+      tenant_id: tenantId.demo,
+      channel: 'sms',
+      provider: 'twilio',
+      creds: twilioSmsCreds,
+      is_enabled: 1,
+      is_verified: 1,
+      webhook_secret: 'twilio-demo-secret'
+    },
+    {
+      tenant_id: tenantId.demo,
+      channel: 'email',
+      provider: 'aws_ses',
+      creds: awsSesCreds,
+      is_enabled: 1,
+      is_verified: 1,
+      webhook_secret: 'aws-sns-secret'
+    }
+  ];
+
+  for (const cred of credentialsList) {
+    const existing = db.prepare('SELECT id FROM tenant_channel_credentials_v2 WHERE tenant_id = ? AND channel = ?').get(cred.tenant_id, cred.channel);
+    if (!existing) {
+      const webhookSecretEncrypted = encryptCredentials(cred.webhook_secret);
+
+      let credFields = {
+        id: uuidv4(),
+        tenant_id: cred.tenant_id,
+        channel: cred.channel,
+        provider: cred.provider,
+        is_enabled: cred.is_enabled,
+        is_verified: cred.is_verified,
+        verified_at: cred.is_verified ? now : null,
+        webhook_secret_encrypted: webhookSecretEncrypted,
+        webhook_url: `https://engageninja.local/api/webhooks/${cred.provider}/${cred.channel}`,
+        created_at: now,
+        updated_at: now
+      };
+
+      if (cred.provider === 'twilio') {
+        credFields.twilio_account_sid = process.env.TWILIO_ACCOUNT_SID || 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+        credFields.twilio_auth_token_encrypted = cred.creds;
+      } else if (cred.provider === 'aws_ses') {
+        credFields.aws_access_key_id_encrypted = cred.creds;
+        credFields.aws_region = process.env.SEED_AWS_REGION || 'us-east-2';
+      }
+
+      const cols = Object.keys(credFields).filter(k => credFields[k] !== undefined).join(', ');
+      const placeholders = cols.split(', ').map(() => '?').join(', ');
+      const vals = cols.split(', ').map(k => credFields[k]);
+
+      db.prepare(`INSERT INTO tenant_channel_credentials_v2 (${cols}) VALUES (${placeholders})`).run(...vals);
+    }
+  }
+  console.log('  ✓ Channel credentials seeded (SMS + Email)');
+
+  // 13. Update tenants table with demo flag
+  console.log('🎭 Seeding demo flag on tenants...');
+  db.prepare('UPDATE tenants SET is_demo = 1, demo_created_at = ?, demo_created_by = ? WHERE id = ?').run(now, userId.platformAdmin, tenantId.demo);
+  db.prepare('UPDATE tenants SET is_demo = 0 WHERE id = ?').run(tenantId.beta);
+  console.log('  ✓ Demo flag set (demo=true, beta=false)');
+
   // Summary
   console.log('\n📊 Seed Data Summary:');
   console.log(`  Plans: ${plans.length}`);
@@ -513,6 +730,10 @@ function copyGlobalTagsToTenant(tenantUuid) {
   console.log(`  Usage Counters: ${seededTenantIds.length}`);
   console.log(`  Channel Settings: 2 (WhatsApp + Email demo defaults)`);
   console.log(`  Contact-Tag Associations: ${contacts.reduce((sum, c) => sum + c.tags.length, 0) * seededTenantIds.length}`);
+  console.log(`  Business Info: 2 (demo verified, beta pending)`);
+  console.log(`  10DLC Brands: 1 (demo approved with phone number)`);
+  console.log(`  Channel Credentials V2: 2 (SMS + Email for demo)`);
+  console.log(`  Demo Flags: Demo Tenant is_demo=1, Beta Tenant is_demo=0`);
 
   console.log('\n✅ Seeding complete!');
   console.log('\n🔐 Test Credentials (with RBAC roles):');

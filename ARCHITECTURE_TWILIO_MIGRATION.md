@@ -22,28 +22,86 @@ This document outlines the architecture for migrating EngageNinja to use Twilio 
 
 ---
 
+## Data Model Philosophy: Versioning & Immutability
+
+### The Challenge: Twilio's Post-Approval Immutability
+
+Twilio's compliance requirement is strict: **Once a 10DLC brand is approved by the TCR (Telecom Compliance Registry), ALL business information becomes permanently locked.** This means:
+
+- ❌ Cannot edit approved business address
+- ❌ Cannot update owner name or EIN
+- ❌ Cannot modify any compliance data once approved
+- ✅ Can only create a NEW 10DLC registration with updated info
+
+But real businesses change: addresses change, owners change, company names change. Tenants need to be able to keep their business info current in EngageNinja.
+
+### The Solution: Two-Table Versioning Pattern
+
+We separate **editable current state** from **immutable approved snapshots**:
+
+**`tenant_business_info`** (EDITABLE)
+- Tenant's current, real-world business information
+- Always updatable in EngageNinja UI
+- Used for display, forms, and analytics
+- One record per tenant
+
+**`tenant_10dlc_brands`** (IMMUTABLE AFTER APPROVAL)
+- Snapshots of business info submitted to Twilio
+- Locked forever once Twilio approves (`twilio_approved_at` is set)
+- Multiple records possible per tenant (if they resubmit with updated info)
+- Read-only UI presentation once approved
+
+### Data Flow Example
+
+```
+Scenario: Business address changes after 10DLC approval
+
+Day 1 - Initial Setup:
+├─ Tenant enters: "123 Main St, Boston, MA"
+├─ Stored in: tenant_business_info
+├─ Submitted to Twilio: Copied to tenant_10dlc_brands (new record)
+└─ Twilio approves: Record locked, tenant allocated phone number
+
+Day 90 - Business Moves:
+├─ Tenant updates address to: "456 Oak Ave, New York, NY"
+├─ Updated in: tenant_business_info (always editable)
+├─ tenant_10dlc_brands: Still shows "123 Main St" (locked)
+├─ UI Warning: "Your current address differs from approved Twilio registration"
+├─ Tenant clicks "Resubmit": Creates NEW tenant_10dlc_brands record
+│   ├─ Copies from updated tenant_business_info
+│   ├─ Status: 'pending' (awaiting Twilio approval)
+│   └─ Old record: Marked is_active=false (deprecated)
+└─ Twilio approves new registration: Gets new phone number, old one remains active
+```
+
+This design respects both:
+- **Twilio's compliance requirement** (approved data locked forever)
+- **Business reality** (info can change, just requires resubmission)
+
+---
+
 ## Part 1: Data Model Changes
 
 ### New Tables
 
 #### 1. `tenant_10dlc_brands`
-Stores 10DLC brand registrations per tenant. One brand per tenant.
+Stores **approved 10DLC brand registrations** (immutable once Twilio approves). Can have multiple registrations per tenant if business info changes post-approval.
 
 ```sql
 CREATE TABLE tenant_10dlc_brands (
   id TEXT PRIMARY KEY,
-  tenant_id TEXT NOT NULL UNIQUE,
+  tenant_id TEXT NOT NULL,           -- NOT UNIQUE - tenant can have multiple if they resubmit
 
-  -- Brand Info (collected from tenant)
+  -- Brand Info (snapshot at submission time - locked after approval)
   legal_business_name TEXT NOT NULL,
   business_registration_number TEXT,  -- EIN/Tax ID
   country TEXT NOT NULL,              -- e.g., 'US'
-  business_address TEXT NOT NULL,     -- Full address
+  business_address TEXT NOT NULL,     -- Full address (locked)
   business_city TEXT NOT NULL,
   business_state TEXT NOT NULL,
   business_zip TEXT NOT NULL,
 
-  -- Owner/Contact Info
+  -- Owner/Contact Info (locked)
   owner_name TEXT NOT NULL,
   owner_email TEXT NOT NULL,
   owner_phone TEXT NOT NULL,
@@ -61,6 +119,10 @@ CREATE TABLE tenant_10dlc_brands (
   -- Campaign Type (for Twilio compliance)
   campaign_type TEXT,                 -- 'marketing', 'transactional', 'support', 'two_way'
 
+  -- Versioning & Status
+  is_active BOOLEAN DEFAULT 1,        -- Tenant using this registration
+  deprecation_reason TEXT,            -- e.g., "business_info_updated_new_registration"
+
   -- Dates
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
@@ -72,7 +134,14 @@ CREATE TABLE tenant_10dlc_brands (
 
 CREATE INDEX idx_tenant_10dlc_brands_tenant_id ON tenant_10dlc_brands(tenant_id);
 CREATE INDEX idx_tenant_10dlc_brands_twilio_brand_sid ON tenant_10dlc_brands(twilio_brand_sid);
+CREATE INDEX idx_tenant_10dlc_brands_active ON tenant_10dlc_brands(tenant_id, is_active);
 ```
+
+**Important Note on Immutability:**
+- Once Twilio approves this registration, **all business info fields are locked forever** (Twilio requirement)
+- Tenant cannot edit this record once `twilio_approved_at` is set
+- If business info changes post-approval, tenant must submit a **new** 10DLC registration
+- Old registration stays active until explicitly deprecated; can maintain multiple active registrations simultaneously
 
 #### 2. `tenant_channel_credentials_v2`
 Enhanced channel credentials storage (replaces/extends `tenant_channel_settings`).
@@ -144,29 +213,29 @@ CREATE INDEX idx_sms_phone_pool_status ON sms_phone_pool(status);
 ```
 
 #### 4. `tenant_business_info`
-Stores complete business information for 10DLC/compliance purposes.
+**Editable, current business information** that tenant maintains in EngageNinja. This is **separate from approved 10DLC data** to allow businesses to update their info while respecting Twilio's post-approval immutability.
 
 ```sql
 CREATE TABLE tenant_business_info (
   id TEXT PRIMARY KEY,
   tenant_id TEXT NOT NULL UNIQUE,
 
-  -- Business Details
+  -- Business Details (tenant-editable)
   legal_business_name TEXT NOT NULL,
   dba_name TEXT,                      -- "Doing Business As"
   business_website TEXT,
   business_type TEXT,                 -- 'sole_proprietor', 'llc', 'corporation', etc.
   industry_vertical TEXT,             -- From Twilio enum
 
-  -- Registration
+  -- Registration (tenant-editable)
   business_registration_number TEXT,  -- EIN (US) or equivalent
   country TEXT NOT NULL,
-  business_address TEXT NOT NULL,
+  business_address TEXT NOT NULL,     -- Tenant's CURRENT address (may differ from locked Twilio data)
   business_city TEXT NOT NULL,
   business_state TEXT NOT NULL,
   business_zip TEXT NOT NULL,
 
-  -- Owner/Principal Contact
+  -- Owner/Principal Contact (tenant-editable)
   owner_name TEXT NOT NULL,
   owner_title TEXT,
   owner_email TEXT NOT NULL,
@@ -186,7 +255,7 @@ CREATE TABLE tenant_business_info (
   gdpr_compliant BOOLEAN DEFAULT 0,   -- For EU tenants
   tcpa_compliant BOOLEAN DEFAULT 0,   -- For US tenants
 
-  -- Verification Status
+  -- Verification Status (for onboarding workflow)
   verification_status TEXT DEFAULT 'pending',  -- 'pending', 'verified', 'rejected'
   verification_failed_reason TEXT,
   verified_by_admin TEXT,             -- User who verified
@@ -203,6 +272,23 @@ CREATE INDEX idx_tenant_business_info_tenant_id ON tenant_business_info(tenant_i
 CREATE INDEX idx_tenant_business_info_verification_status
   ON tenant_business_info(verification_status);
 ```
+
+**Key Design Point: Why Separate Tables?**
+
+Twilio locks approved 10DLC data forever (compliance requirement), but businesses change. Solution:
+
+- **`tenant_business_info`**: Always editable, shows current business state in UI, used for forms and display
+- **`tenant_10dlc_brands`**: Immutable approved snapshot, locked after Twilio approval
+- **When business info changes post-approval**: Show tenant "Your current info differs from approved Twilio registration" with option to resubmit
+
+**Workflow:**
+
+1. **Tenant submits 10DLC**: Data copied from `tenant_business_info` to new `tenant_10dlc_brands` record (pre-approval state)
+2. **Twilio approves**: `twilio_approved_at` set, business info in that record becomes READ-ONLY
+3. **Tenant updates address in EngageNinja**: Updates `tenant_business_info` only, `tenant_10dlc_brands` unchanged
+4. **System detects difference**: Shows warning "Business address differs from approved Twilio registration. Resubmit for update."
+5. **Tenant resubmits**: Creates NEW row in `tenant_10dlc_brands` with updated info, old one marked `is_active=false`
+6. **New approval cycle**: New 10DLC registration goes through Twilio approval, gets new phone number if needed
 
 #### 5. `message_provider_mappings`
 Maps messages to provider-specific IDs for webhook matching.
@@ -610,17 +696,47 @@ VALUES (uuid(), user_id, tenant_id, "owner")
 
 ### Demo Mode 10DLC Flow
 
+**Pre-population from `tenant_business_info`:**
+
+When tenant reaches 10DLC form, backend pre-populates fields from existing `tenant_business_info` record (if it exists). Tenant can review, edit, and submit.
+
+```javascript
+// GET /api/10dlc/form
+exports.get10DLCForm = async (req, res) => {
+  const businessInfo = db.prepare(`
+    SELECT * FROM tenant_business_info WHERE tenant_id = ?
+  `).get(req.tenantId);
+
+  res.json({
+    // Pre-populated fields (editable)
+    legal_business_name: businessInfo?.legal_business_name || '',
+    business_address: businessInfo?.business_address || '',
+    business_city: businessInfo?.business_city || '',
+    business_state: businessInfo?.business_state || '',
+    business_zip: businessInfo?.business_zip || '',
+    owner_name: businessInfo?.owner_name || '',
+    owner_email: businessInfo?.owner_email || '',
+    owner_phone: businessInfo?.owner_phone || '',
+    // ... other fields
+  });
+};
+```
+
 **Timeline**:
-1. **T+0s**: Demo tenant submits business info form
-2. **T+0s**: Backend immediately creates `tenant_10dlc_brands` record with status = 'pending'
-3. **T+30s**: Scheduled Lambda auto-updates status to 'approved'
-4. **T+30s**: Generate fake phone number (e.g., `+1-555-0100-{tenantId}`)
-5. **T+30s**: Frontend shows "✓ SMS approved and ready!"
+1. **T+0s**: Demo tenant views form (pre-populated from `tenant_business_info`)
+2. **T+0s**: Tenant makes edits if needed and submits
+3. **T+0s**: Backend copies submitted data to `tenant_10dlc_brands` (new record)
+4. **T+30s**: Scheduled Lambda auto-updates status to 'approved'
+5. **T+30s**: Generate fake phone number (e.g., `+1-555-0100-{tenantId}`)
+6. **T+30s**: Frontend shows "✓ SMS approved and ready!"
 
 **Backend Logic** (in 10DLC submission):
 ```javascript
-async function submitBusinessInfo(tenantId, businessInfo) {
+async function submitBusinessInfo(tenantId, submittedData) {
   const tenant = await getTenant(tenantId);
+
+  // Always save back to tenant_business_info (updates or creates)
+  await saveTenantBusinessInfo(tenantId, submittedData);
 
   if (tenant.is_demo) {
     // Demo mode: simulate approval
@@ -632,12 +748,15 @@ async function submitBusinessInfo(tenantId, businessInfo) {
       twilio_brand_status: 'pending',
       twilio_phone_number: fakePhoneNumber,
       twilio_phone_status: 'active',
-      ...businessInfo
+      // Copy submitted data (snapshot for compliance)
+      ...submittedData,
+      created_at: new Date(),
+      updated_at: new Date()
     };
 
     db.prepare(`
       INSERT INTO tenant_10dlc_brands (...) VALUES (...)
-    `).run(...);
+    `).run(Object.values(brandRecord));
 
     // Schedule auto-approval in 30 seconds
     await scheduleAutoApproval(tenantId, 30000);
@@ -649,7 +768,7 @@ async function submitBusinessInfo(tenantId, businessInfo) {
     };
   } else {
     // Real mode: submit to Twilio
-    return submitToTwilio(tenantId, businessInfo);
+    return submitToTwilio(tenantId, submittedData);
   }
 }
 
@@ -695,37 +814,101 @@ exports.handler = async (event) => {
 
 ### Demo Mode Message Sending
 
-**When demo tenant sends campaign**:
-1. No Twilio API call made
-2. Generate fake `provider_message_id` (e.g., `demo-{tenantId}-{timestamp}`)
-3. Store in message_provider_mappings
-4. Mark message as 'sent' immediately
-5. Schedule async status updates at realistic intervals
+**Same Infrastructure, Different Behavior:**
 
-**Lambda** (`handleDemoSend` in SendCampaignMessage):
+Demo messages use the **exact same SQS queue** as real messages. The only difference is what happens in the Lambda processor.
+
+**Workflow**:
+1. Campaign send → messages queued to SQS (same queue as real sends)
+2. SQS → Lambda (same Lambda as real sends)
+3. Lambda checks: `if (tenant.is_demo) {...} else {...}`
+4. If demo: Skip provider API call, schedule status updates instead
+5. If real: Call Twilio/SES API as normal
+
+**Lambda Handler** (in `processMessageQueue` Lambda):
 ```javascript
-async function handleDemoSend(messageId, tenantId, channel) {
-  const fakeProviderId = `demo-${tenantId}-${Date.now()}`;
+async function processMessage(sqsMessage) {
+  const message = JSON.parse(sqsMessage.Body);
+  const tenant = await getTenant(message.tenant_id);
 
-  // Update to 'sent' immediately
-  await updateMessageStatus(messageId, 'sent', {
-    provider_message_id: fakeProviderId
+  if (tenant.is_demo) {
+    // DEMO MODE: Simulate sending without hitting Twilio/SES
+    return await handleDemoSend(message);
+  } else {
+    // REAL MODE: Send via actual provider
+    return await handleRealSend(message);
+  }
+}
+
+async function handleDemoSend(message) {
+  const fakeProviderId = `demo-${message.tenant_id}-${Date.now()}`;
+
+  // Mark as 'sent' immediately
+  await db.prepare(`
+    UPDATE messages SET status = 'sent'
+    WHERE id = ?
+  `).run(message.id);
+
+  // Store fake provider ID for webhook matching
+  await db.prepare(`
+    INSERT INTO message_provider_mappings
+    (message_id, channel, provider, provider_message_id)
+    VALUES (?, ?, 'demo', ?)
+  `).run(message.id, message.channel, fakeProviderId);
+
+  // Schedule realistic status updates via EventBridge
+  const deliveredDelay = 3000 + Math.random() * 2000;  // 3-5s
+  const readDelay = 5000 + Math.random() * 5000;       // 5-10s
+
+  await scheduleStatusUpdate(message.id, message.tenant_id, 'delivered', deliveredDelay);
+  await scheduleStatusUpdate(message.id, message.tenant_id, 'read', readDelay);
+
+  return { success: true, messageId: message.id, provider: 'demo' };
+}
+
+async function scheduleStatusUpdate(messageId, tenantId, status, delayMs) {
+  const eventBridge = new AWS.EventBridge();
+
+  await eventBridge.putEvents({
+    Entries: [{
+      Source: 'engageninja.demo',
+      DetailType: 'DemoStatusUpdate',
+      Detail: JSON.stringify({ messageId, tenantId, status }),
+      Time: new Date(Date.now() + delayMs)
+    }]
+  }).promise();
+}
+```
+
+**Lambda** (EventBridge scheduled `demoStatusUpdate`):
+```javascript
+// lambda/functions/demo-status-update/index.js
+exports.handler = async (event) => {
+  const { messageId, tenantId, status } = JSON.parse(event.detail);
+
+  // Update message status
+  db.prepare(`
+    UPDATE messages SET status = ?, updated_at = NOW()
+    WHERE id = ?
+  `).run(status, messageId);
+
+  // Broadcast real-time update to frontend via SSE
+  await broadcastViaSSE(tenantId, {
+    type: 'message-status',
+    messageId,
+    status,
+    timestamp: new Date()
   });
 
-  // Schedule 'delivered' in 3-5 seconds
-  const deliveredDelay = 3000 + Math.random() * 2000;
-  await scheduleStatusUpdate(messageId, tenantId, 'delivered', deliveredDelay);
-
-  // Schedule 'read' in 5-10 seconds total
-  const readDelay = 5000 + Math.random() * 5000;
-  await scheduleStatusUpdate(messageId, tenantId, 'read', readDelay);
-}
+  return { success: true, messageId, status };
+};
 ```
 
 **Result**: Demo tenant sees:
 - T+0s: Message marked "Sent" ✓
-- T+3-5s: Message marked "Delivered" ✓
-- T+5-10s: Message marked "Read" ✓
+- T+3-5s: Message marked "Delivered" ✓ (via EventBridge)
+- T+5-10s: Message marked "Read" ✓ (via EventBridge)
+- Real-time frontend updates via SSE (same as real sends)
 
 ### Demo Mode UI Badge
 
