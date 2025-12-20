@@ -5,8 +5,7 @@
  */
 
 const db = require('../db');
-const whatsappService = require('./whatsapp');
-const emailService = require('./emailService');
+const { getProvider } = require('./messaging/providerFactory');
 const crypto = require('crypto');
 
 // Rate limiting: max 80 API calls per second for WhatsApp
@@ -79,85 +78,11 @@ function markCampaignIfComplete(campaignId, tenantId) {
   }
 }
 
-/**
- * Decrypt credentials using the same encryption as settings.js
- */
-function decryptCredentials(encryptedData) {
-  try {
-    const encryptionKey = process.env.ENCRYPTION_KEY || 'default-dev-key-change-in-production';
-    const key = crypto.createHash('sha256').update(encryptionKey).digest().subarray(0, 24);
-    const iv = Buffer.alloc(16, 0);
-    const decipher = crypto.createDecipheriv('aes-192-cbc', key, iv);
-    let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return JSON.parse(decrypted);
-  } catch (err) {
-    console.error('Decryption error:', err.message);
-    return null;
-  }
-}
-
-function normalizeWhatsAppCredentials(creds = {}) {
-  return {
-    access_token: creds.access_token || creds.accessToken || '',
-    phone_number_id: creds.phone_number_id || creds.phoneNumberId || '',
-    business_account_id: creds.business_account_id || creds.businessAccountId || null
-  };
-}
-
-/**
- * Get decrypted WhatsApp credentials for a tenant
- * @param {string} tenantId - Tenant ID
- * @returns {Object|null} Credentials object or null if not configured
- */
-function getWhatsAppCredentials(tenantId) {
-  try {
-    const setting = db.prepare(`
-      SELECT credentials_encrypted FROM tenant_channel_settings
-      WHERE tenant_id = ? AND channel = 'whatsapp' AND is_connected = 1
-    `).get(tenantId);
-
-    if (!setting) {
-      return null;
-    }
-
-    return normalizeWhatsAppCredentials(decryptCredentials(setting.credentials_encrypted) || {});
-  } catch (error) {
-    console.error('Error getting WhatsApp credentials:', error);
-    return null;
-  }
-}
-
-/**
- * Get decrypted Email credentials for a tenant
- * @param {string} tenantId - Tenant ID
- * @returns {Object|null} Credentials object or null if not configured
- */
-function getEmailCredentials(tenantId) {
-  try {
-    const setting = db.prepare(`
-      SELECT credentials_encrypted, verified_sender_email FROM tenant_channel_settings
-      WHERE tenant_id = ? AND channel = 'email' AND is_connected = 1
-    `).get(tenantId);
-
-    if (!setting) {
-      return null;
-    }
-
-    const credentials = decryptCredentials(setting.credentials_encrypted);
-    if (credentials) {
-      credentials.verified_sender_email = setting.verified_sender_email;
-    }
-    return credentials;
-  } catch (error) {
-    console.error('Error getting email credentials:', error);
-    return null;
-  }
-}
 
 /**
  * Process a single queued message
- * Sends via WhatsApp or Email, handles retries and errors
+ * Sends via SMS, WhatsApp, or Email via the appropriate provider
+ * Handles retries and errors
  * @param {Object} message - Message record from database
  * @returns {Promise<boolean>} True if sent successfully
  */
@@ -174,7 +99,7 @@ async function processMessage(message) {
     }
 
     const campaign = db.prepare(`
-      SELECT template_id, message_content, channel, description FROM campaigns WHERE id = ?
+      SELECT template_id, message_content, channel, description, from_number, from_email FROM campaigns WHERE id = ?
     `).get(message.campaign_id);
 
     if (!campaign) {
@@ -186,10 +111,15 @@ async function processMessage(message) {
     }
 
     // Route to appropriate channel handler
-    if (message.channel === 'email') {
-      return await processEmailMessage(message, contact, campaign);
-    } else {
-      return await processWhatsAppMessage(message, contact, campaign);
+    switch (message.channel) {
+      case 'sms':
+        return await processSmsMessage(message, contact, campaign);
+      case 'whatsapp':
+        return await processWhatsAppMessage(message, contact, campaign);
+      case 'email':
+        return await processEmailMessage(message, contact, campaign);
+      default:
+        throw new Error(`Unsupported channel: ${message.channel}`);
     }
 
   } catch (error) {
@@ -200,7 +130,7 @@ async function processMessage(message) {
 }
 
 /**
- * Process a WhatsApp message
+ * Process a WhatsApp message via provider
  */
 async function processWhatsAppMessage(message, contact, campaign) {
   try {
@@ -208,50 +138,28 @@ async function processWhatsAppMessage(message, contact, campaign) {
       throw new Error('No phone number');
     }
 
-    // Get WhatsApp credentials
-    const credentials = getWhatsAppCredentials(message.tenant_id);
-    if (!credentials || !credentials.phone_number_id || !credentials.access_token) {
-      throw new Error('WhatsApp not configured');
-    }
-
     // Wait if rate limit would be exceeded
     while (!canMakeApiCall('whatsapp')) {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    // Send message via WhatsApp
-      const template = db.prepare(`
-        SELECT name, header_type, header_text, footer_text, body_template, body_variables, header_variables, variable_count
-        FROM whatsapp_templates
-        WHERE id = ? AND tenant_id = ?
-      `).get(campaign.template_id, message.tenant_id);
+    // Get provider (handles demo mode automatically)
+    const provider = await getProvider(message.tenant_id, 'whatsapp');
 
-    // Normalize template variables
-    const parsedBodyVars = safeParseArray(template?.body_variables);
-    const parsedHeaderVars = safeParseArray(template?.header_variables);
-    const parsedButtons = template?.buttons_json
-      ? safeParseArray(JSON.parse(template.buttons_json))
-      : (Array.isArray(template?.buttons) ? template.buttons : []);
+    // Build message object for provider
+    const messageData = {
+      id: message.id,
+      phone_number: contact.phone,
+      content: campaign.message_content,
+      from_number: campaign.from_number
+    };
 
-    const templateName = template?.name || campaign.template_id;
-    const variables = buildTemplateVariables(campaign.message_content, contact);
-    const media = extractMediaFromMessageContent(campaign.message_content);
+    // Send via provider
+    const result = await provider.send(messageData);
 
-    const providerId = await whatsappService.sendWhatsAppMessage(
-      credentials.phone_number_id,
-      credentials.access_token,
-      contact.phone,
-      {
-        name: templateName,
-        body_variables: parsedBodyVars,
-        header_variables: parsedHeaderVars,
-        header_type: template?.header_type,
-        buttons: parsedButtons,
-        variables: parsedBodyVars && parsedBodyVars.length > 0 ? parsedBodyVars : undefined // fallback for send helper
-      },
-      variables,
-      media
-    );
+    if (!result.success) {
+      throw new Error(result.error || 'Unknown error');
+    }
 
     recordApiCall('whatsapp');
 
@@ -261,23 +169,18 @@ async function processWhatsAppMessage(message, contact, campaign) {
       UPDATE messages
       SET status = 'sent', provider_message_id = ?, sent_at = ?, updated_at = ?
       WHERE id = ?
-    `).run(providerId, now, now, message.id);
+    `).run(result.provider_message_id, now, now, message.id);
 
-    console.log(`✓ Message ${message.id} sent via WhatsApp (provider ID: ${providerId})`);
+    console.log(`✓ Message ${message.id} sent via WhatsApp (provider ID: ${result.provider_message_id})`);
     markCampaignIfComplete(message.campaign_id, message.tenant_id);
     return true;
   } catch (error) {
-    // Certain WhatsApp errors are non-retriable (e.g., variable mismatch)
-    if (isNonRetriableWhatsAppError(error)) {
-      handleMessageError(message, error, { forceFail: true });
-      return false;
-    }
     throw error;
   }
 }
 
 /**
- * Process an Email message
+ * Process an Email message via provider
  */
 async function processEmailMessage(message, contact, campaign) {
   try {
@@ -285,16 +188,13 @@ async function processEmailMessage(message, contact, campaign) {
       throw new Error('No email address');
     }
 
-    // Get Email credentials
-    const credentials = getEmailCredentials(message.tenant_id);
-    if (!credentials) {
-      throw new Error('Email not configured');
-    }
-
     // Wait if rate limit would be exceeded
     while (!canMakeApiCall('email')) {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
+
+    // Get provider (handles demo mode automatically)
+    const provider = await getProvider(message.tenant_id, 'email');
 
     // Parse email content (should be { subject, htmlBody, textBody })
     let emailContent = {};
@@ -307,17 +207,24 @@ async function processEmailMessage(message, contact, campaign) {
     const subject = emailContent.subject || campaign.name || 'Message from EngageNinja';
     const htmlBody = emailContent.htmlBody || campaign.description || '';
     const textBody = emailContent.textBody || '';
-    const senderEmail = credentials.verified_sender_email || 'noreply@engageninja.com';
+    const fromEmail = campaign.from_email || 'noreply@engageninja.com';
 
-    // Send email via SES/Brevo
-    const providerId = await emailService.send(
-      credentials,
-      contact.email,
-      subject,
-      htmlBody,
-      textBody,
-      senderEmail
-    );
+    // Build message object for provider
+    const messageData = {
+      id: message.id,
+      to_email: contact.email,
+      from_email: fromEmail,
+      subject: subject,
+      html_body: htmlBody,
+      text_body: textBody
+    };
+
+    // Send via provider
+    const result = await provider.send(messageData);
+
+    if (!result.success) {
+      throw new Error(result.error || 'Unknown error');
+    }
 
     recordApiCall('email');
 
@@ -325,15 +232,64 @@ async function processEmailMessage(message, contact, campaign) {
     const now = new Date().toISOString();
     db.prepare(`
       UPDATE messages
-      SET status = 'delivered',
+      SET status = 'sent',
           provider_message_id = ?,
-          sent_at = COALESCE(sent_at, ?),
-          delivered_at = ?,
+          sent_at = ?,
           updated_at = ?
       WHERE id = ?
-    `).run(providerId, now, now, now, message.id);
+    `).run(result.provider_message_id, now, now, message.id);
 
-    console.log(`✓ Message ${message.id} sent via Email (provider ID: ${providerId})`);
+    console.log(`✓ Message ${message.id} sent via Email (provider ID: ${result.provider_message_id})`);
+    markCampaignIfComplete(message.campaign_id, message.tenant_id);
+    return true;
+  } catch (error) {
+    throw error;
+  }
+}
+
+/**
+ * Process an SMS message via provider
+ */
+async function processSmsMessage(message, contact, campaign) {
+  try {
+    if (!contact.phone) {
+      throw new Error('No phone number');
+    }
+
+    // Wait if rate limit would be exceeded
+    while (!canMakeApiCall('sms')) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    // Get provider (handles demo mode automatically)
+    const provider = await getProvider(message.tenant_id, 'sms');
+
+    // Build message object for provider
+    const messageData = {
+      id: message.id,
+      phone_number: contact.phone,
+      content: campaign.message_content,
+      from_number: campaign.from_number
+    };
+
+    // Send via provider
+    const result = await provider.send(messageData);
+
+    if (!result.success) {
+      throw new Error(result.error || 'Unknown error');
+    }
+
+    recordApiCall('sms');
+
+    // Update message with provider ID and mark as sent (webhook will update to delivered/read)
+    const now = new Date().toISOString();
+    db.prepare(`
+      UPDATE messages
+      SET status = 'sent', provider_message_id = ?, sent_at = ?, updated_at = ?
+      WHERE id = ?
+    `).run(result.provider_message_id, now, now, message.id);
+
+    console.log(`✓ Message ${message.id} sent via SMS (provider ID: ${result.provider_message_id})`);
     markCampaignIfComplete(message.campaign_id, message.tenant_id);
     return true;
   } catch (error) {
@@ -449,9 +405,7 @@ module.exports = {
   processMessage,
   startMessageProcessor,
   canMakeApiCall,
-  recordApiCall,
-  getWhatsAppCredentials,
-  getEmailCredentials
+  recordApiCall
 };
 
 function isNonRetriableWhatsAppError(error) {
