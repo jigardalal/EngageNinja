@@ -13,7 +13,8 @@
     "db:reset": "node scripts/db-reset.js",
     "test:server": "node scripts/test-server.js",
     "test:webhooks": "node scripts/test-webhooks-integration.js",
-    "test:webhooks:email": "node scripts/test-email-webhooks.js"
+    "test:webhooks:email": "node scripts/test-email-webhooks.js",
+    "test:providers": "node scripts/test-providers.js"
   },
   "keywords": [
     "whatsapp",
