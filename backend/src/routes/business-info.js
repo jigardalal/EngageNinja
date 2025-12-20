@@ -35,21 +35,28 @@ router.get('/', requireAuth, validateTenantAccess, requireMember, (req, res) => 
         data: {
           tenant_id: req.tenantId,
           legal_business_name: tenant.name,
+          dba_name: null,
+          business_website: null,
           business_type: null,
-          business_industry: null,
+          industry_vertical: null,
+          business_registration_number: null,
+          country: 'US',
           business_address: null,
           business_city: null,
           business_state: null,
           business_zip: null,
-          business_country: null,
-          business_phone: null,
-          business_email: null,
-          business_website: null,
-          ein: null,
-          authorized_representative_name: null,
-          authorized_representative_email: null,
-          authorized_representative_phone: null,
-          authorized_representative_title: null,
+          owner_name: null,
+          owner_title: null,
+          owner_email: null,
+          owner_phone: null,
+          business_contact_name: null,
+          business_contact_email: null,
+          business_contact_phone: null,
+          monthly_sms_volume_estimate: null,
+          use_case_description: null,
+          sms_opt_in_language: null,
+          gdpr_compliant: false,
+          tcpa_compliant: false,
           created_at: null,
           updated_at: null
         },
@@ -81,28 +88,35 @@ router.post('/', requireAuth, validateTenantAccess, requireAdmin, (req, res) => 
   try {
     const {
       legal_business_name,
+      dba_name,
+      business_website,
       business_type,
-      business_industry,
+      industry_vertical,
+      business_registration_number,
+      country,
       business_address,
       business_city,
       business_state,
       business_zip,
-      business_country,
-      business_phone,
-      business_email,
-      business_website,
-      ein,
-      authorized_representative_name,
-      authorized_representative_email,
-      authorized_representative_phone,
-      authorized_representative_title
+      owner_name,
+      owner_title,
+      owner_email,
+      owner_phone,
+      business_contact_name,
+      business_contact_email,
+      business_contact_phone,
+      monthly_sms_volume_estimate,
+      use_case_description,
+      sms_opt_in_language,
+      gdpr_compliant,
+      tcpa_compliant
     } = req.body;
 
     // Validate required fields
-    if (!legal_business_name || !business_type || !business_address) {
+    if (!legal_business_name || !business_type || !business_address || !country || !owner_name || !owner_email || !owner_phone) {
       return res.status(400).json({
         error: 'Missing required fields',
-        message: 'legal_business_name, business_type, and business_address are required',
+        message: 'legal_business_name, business_type, business_address, country, owner_name, owner_email, and owner_phone are required',
         status: 'error'
       });
     }
@@ -119,29 +133,37 @@ router.post('/', requireAuth, validateTenantAccess, requireAdmin, (req, res) => 
       db.prepare(`
         UPDATE tenant_business_info
         SET legal_business_name = ?,
+            dba_name = ?,
+            business_website = ?,
             business_type = ?,
-            business_industry = ?,
+            industry_vertical = ?,
+            business_registration_number = ?,
+            country = ?,
             business_address = ?,
             business_city = ?,
             business_state = ?,
             business_zip = ?,
-            business_country = ?,
-            business_phone = ?,
-            business_email = ?,
-            business_website = ?,
-            ein = ?,
-            authorized_representative_name = ?,
-            authorized_representative_email = ?,
-            authorized_representative_phone = ?,
-            authorized_representative_title = ?,
+            owner_name = ?,
+            owner_title = ?,
+            owner_email = ?,
+            owner_phone = ?,
+            business_contact_name = ?,
+            business_contact_email = ?,
+            business_contact_phone = ?,
+            monthly_sms_volume_estimate = ?,
+            use_case_description = ?,
+            sms_opt_in_language = ?,
+            gdpr_compliant = ?,
+            tcpa_compliant = ?,
             updated_at = ?
         WHERE tenant_id = ?
       `).run(
-        legal_business_name, business_type, business_industry,
-        business_address, business_city, business_state, business_zip, business_country,
-        business_phone, business_email, business_website, ein,
-        authorized_representative_name, authorized_representative_email,
-        authorized_representative_phone, authorized_representative_title,
+        legal_business_name, dba_name, business_website, business_type, industry_vertical,
+        business_registration_number, country, business_address, business_city, business_state, business_zip,
+        owner_name, owner_title, owner_email, owner_phone,
+        business_contact_name, business_contact_email, business_contact_phone,
+        monthly_sms_volume_estimate, use_case_description, sms_opt_in_language,
+        gdpr_compliant ? 1 : 0, tcpa_compliant ? 1 : 0,
         now, req.tenantId
       );
 
@@ -168,19 +190,21 @@ router.post('/', requireAuth, validateTenantAccess, requireAdmin, (req, res) => 
 
       db.prepare(`
         INSERT INTO tenant_business_info (
-          id, tenant_id, legal_business_name, business_type, business_industry,
-          business_address, business_city, business_state, business_zip, business_country,
-          business_phone, business_email, business_website, ein,
-          authorized_representative_name, authorized_representative_email,
-          authorized_representative_phone, authorized_representative_title,
+          id, tenant_id, legal_business_name, dba_name, business_website, business_type, industry_vertical,
+          business_registration_number, country, business_address, business_city, business_state, business_zip,
+          owner_name, owner_title, owner_email, owner_phone,
+          business_contact_name, business_contact_email, business_contact_phone,
+          monthly_sms_volume_estimate, use_case_description, sms_opt_in_language,
+          gdpr_compliant, tcpa_compliant,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
-        id, req.tenantId, legal_business_name, business_type, business_industry,
-        business_address, business_city, business_state, business_zip, business_country,
-        business_phone, business_email, business_website, ein,
-        authorized_representative_name, authorized_representative_email,
-        authorized_representative_phone, authorized_representative_title,
+        id, req.tenantId, legal_business_name, dba_name, business_website, business_type, industry_vertical,
+        business_registration_number, country, business_address, business_city, business_state, business_zip,
+        owner_name, owner_title, owner_email, owner_phone,
+        business_contact_name, business_contact_email, business_contact_phone,
+        monthly_sms_volume_estimate, use_case_description, sms_opt_in_language,
+        gdpr_compliant ? 1 : 0, tcpa_compliant ? 1 : 0,
         now, now
       );
 
@@ -242,19 +266,20 @@ router.post('/submit-10dlc', requireAuth, validateTenantAccess, requireAdmin, as
 
       db.prepare(`
         INSERT INTO tenant_10dlc_brands (
-          id, tenant_id, provider, provider_brand_id, provider_status,
-          legal_business_name, business_type, business_industry,
-          business_address, business_city, business_state, business_zip, business_country,
-          ein, authorized_representative_name,
-          submitted_at, provider_approved_at, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          id, tenant_id, legal_business_name, dba_name, business_website, business_type, industry_vertical,
+          business_registration_number, country, business_address, business_city, business_state, business_zip,
+          owner_name, owner_title, owner_email, owner_phone,
+          provider, provider_brand_id, provider_status,
+          provider_approved_at, is_active, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
-        brandId, req.tenantId, 'demo', demoPhoneId, 'APPROVED',
-        businessInfo.legal_business_name, businessInfo.business_type, businessInfo.business_industry,
-        businessInfo.business_address, businessInfo.business_city, businessInfo.business_state,
-        businessInfo.business_zip, businessInfo.business_country,
-        businessInfo.ein, businessInfo.authorized_representative_name,
-        now, now, now, now
+        brandId, req.tenantId, businessInfo.legal_business_name, businessInfo.dba_name, businessInfo.business_website,
+        businessInfo.business_type, businessInfo.industry_vertical,
+        businessInfo.business_registration_number, businessInfo.country, businessInfo.business_address,
+        businessInfo.business_city, businessInfo.business_state, businessInfo.business_zip,
+        businessInfo.owner_name, businessInfo.owner_title, businessInfo.owner_email, businessInfo.owner_phone,
+        'demo', demoPhoneId, 'APPROVED',
+        now, 1, now, now
       );
 
       logAudit({
@@ -286,19 +311,20 @@ router.post('/submit-10dlc', requireAuth, validateTenantAccess, requireAdmin, as
 
     db.prepare(`
       INSERT INTO tenant_10dlc_brands (
-        id, tenant_id, provider, provider_brand_id, provider_status,
-        legal_business_name, business_type, business_industry,
-        business_address, business_city, business_state, business_zip, business_country,
-        ein, authorized_representative_name,
-        submitted_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, tenant_id, legal_business_name, dba_name, business_website, business_type, industry_vertical,
+        business_registration_number, country, business_address, business_city, business_state, business_zip,
+        owner_name, owner_title, owner_email, owner_phone,
+        provider, provider_brand_id, provider_status,
+        is_active, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      brandId, req.tenantId, 'twilio', 'PENDING', 'PENDING',
-      businessInfo.legal_business_name, businessInfo.business_type, businessInfo.business_industry,
-      businessInfo.business_address, businessInfo.business_city, businessInfo.business_state,
-      businessInfo.business_zip, businessInfo.business_country,
-      businessInfo.ein, businessInfo.authorized_representative_name,
-      now, now, now
+      brandId, req.tenantId, businessInfo.legal_business_name, businessInfo.dba_name, businessInfo.business_website,
+      businessInfo.business_type, businessInfo.industry_vertical,
+      businessInfo.business_registration_number, businessInfo.country, businessInfo.business_address,
+      businessInfo.business_city, businessInfo.business_state, businessInfo.business_zip,
+      businessInfo.owner_name, businessInfo.owner_title, businessInfo.owner_email, businessInfo.owner_phone,
+      'twilio', 'PENDING', 'PENDING',
+      1, now, now
     );
 
     logAudit({
