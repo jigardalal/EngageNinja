@@ -116,6 +116,7 @@ app.use('/api/contacts', require('./routes/contacts'));
 app.use('/api/campaigns', require('./routes/campaigns'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/templates', require('./routes/templates'));
+app.use('/api/business-info', require('./routes/business-info'));
 
 // ===== BILLING SERVICE INITIALIZATION =====
 let billingService = null;
