@@ -606,15 +606,17 @@ function copyGlobalTagsToTenant(tenantUuid) {
       owner_title: 'CEO',
       owner_email: 'owner@engageninja.local',
       owner_phone: '+14155555555',
-      twilio_brand_sid: 'BRxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-      twilio_brand_status: 'approved',
-      twilio_phone_number: '+1415555DEMO',
-      twilio_phone_number_sid: 'PNxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-      twilio_phone_status: 'active',
+      provider: 'twilio',
+      provider_brand_id: 'BRxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      provider_status: 'approved',
+      phone_number: '+1415555DEMO',
+      provider_phone_id: 'PNxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      phone_status: 'active',
       campaign_type: 'marketing',
       is_active: 1,
-      twilio_verified_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
-      twilio_approved_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days ago
+      provider_config_json: JSON.stringify({ accountSid: 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' }),
+      provider_verified_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
+      provider_approved_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days ago
     }
   ];
 
@@ -625,42 +627,41 @@ function copyGlobalTagsToTenant(tenantUuid) {
         INSERT INTO tenant_10dlc_brands
         (id, tenant_id, legal_business_name, dba_name, business_type, industry_vertical, business_registration_number, country,
          business_address, business_city, business_state, business_zip, owner_name, owner_title, owner_email, owner_phone,
-         twilio_brand_sid, twilio_brand_status, twilio_phone_number, twilio_phone_number_sid, twilio_phone_status,
-         campaign_type, is_active, twilio_verified_at, twilio_approved_at, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         provider, provider_brand_id, provider_status, phone_number, provider_phone_id, phone_status,
+         campaign_type, is_active, provider_config_json, provider_verified_at, provider_approved_at, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         uuidv4(), brand.tenant_id, brand.legal_business_name, brand.dba_name, brand.business_type, brand.industry_vertical,
         brand.business_registration_number, brand.country, brand.business_address, brand.business_city, brand.business_state, brand.business_zip,
         brand.owner_name, brand.owner_title, brand.owner_email, brand.owner_phone,
-        brand.twilio_brand_sid, brand.twilio_brand_status, brand.twilio_phone_number, brand.twilio_phone_number_sid, brand.twilio_phone_status,
-        brand.campaign_type, brand.is_active, brand.twilio_verified_at, brand.twilio_approved_at, now, now
+        brand.provider, brand.provider_brand_id, brand.provider_status, brand.phone_number, brand.provider_phone_id, brand.phone_status,
+        brand.campaign_type, brand.is_active, brand.provider_config_json, brand.provider_verified_at, brand.provider_approved_at, now, now
       );
     }
   }
   console.log('  ✓ 10DLC brands seeded (demo: approved, beta: pending)');
 
-  // 12. Seed Tenant Channel Credentials V2 (Twilio SMS & AWS SES)
-  console.log('🔐 Seeding tenant channel credentials (Twilio SMS & AWS SES)...');
+  // 12. Seed Tenant Channel Credentials V2 (SMS & Email - provider-agnostic)
+  console.log('🔐 Seeding tenant channel credentials (SMS & Email)...');
 
-  const twilioSmsCreds = encryptCredentials({
-    provider: 'twilio',
+  // Encrypt credentials as JSON (works for any provider)
+  const twilioSmsCreds = encryptCredentials(JSON.stringify({
     accountSid: process.env.TWILIO_ACCOUNT_SID || 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
     authToken: process.env.TWILIO_AUTH_TOKEN || 'auth_token_here'
-  });
+  }));
 
-  const awsSesCreds = encryptCredentials({
-    provider: 'aws_ses',
+  const awsSesCreds = encryptCredentials(JSON.stringify({
     accessKeyId: process.env.SEED_AWS_ACCESS_KEY_ID || '[REDACTED]',
     secretAccessKey: process.env.SEED_AWS_SECRET_ACCESS_KEY || '[REDACTED]',
     region: process.env.SEED_AWS_REGION || 'us-east-2'
-  });
+  }));
 
   const credentialsList = [
     {
       tenant_id: tenantId.demo,
       channel: 'sms',
       provider: 'twilio',
-      creds: twilioSmsCreds,
+      credentials_json_encrypted: twilioSmsCreds,
       is_enabled: 1,
       is_verified: 1,
       webhook_secret: 'twilio-demo-secret'
@@ -669,7 +670,7 @@ function copyGlobalTagsToTenant(tenantUuid) {
       tenant_id: tenantId.demo,
       channel: 'email',
       provider: 'aws_ses',
-      creds: awsSesCreds,
+      credentials_json_encrypted: awsSesCreds,
       is_enabled: 1,
       is_verified: 1,
       webhook_secret: 'aws-sns-secret'
@@ -681,33 +682,25 @@ function copyGlobalTagsToTenant(tenantUuid) {
     if (!existing) {
       const webhookSecretEncrypted = encryptCredentials(cred.webhook_secret);
 
-      let credFields = {
-        id: uuidv4(),
-        tenant_id: cred.tenant_id,
-        channel: cred.channel,
-        provider: cred.provider,
-        is_enabled: cred.is_enabled,
-        is_verified: cred.is_verified,
-        verified_at: cred.is_verified ? now : null,
-        webhook_secret_encrypted: webhookSecretEncrypted,
-        webhook_url: `https://engageninja.local/api/webhooks/${cred.provider}/${cred.channel}`,
-        created_at: now,
-        updated_at: now
-      };
-
-      if (cred.provider === 'twilio') {
-        credFields.twilio_account_sid = process.env.TWILIO_ACCOUNT_SID || 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
-        credFields.twilio_auth_token_encrypted = cred.creds;
-      } else if (cred.provider === 'aws_ses') {
-        credFields.aws_access_key_id_encrypted = cred.creds;
-        credFields.aws_region = process.env.SEED_AWS_REGION || 'us-east-2';
-      }
-
-      const cols = Object.keys(credFields).filter(k => credFields[k] !== undefined).join(', ');
-      const placeholders = cols.split(', ').map(() => '?').join(', ');
-      const vals = cols.split(', ').map(k => credFields[k]);
-
-      db.prepare(`INSERT INTO tenant_channel_credentials_v2 (${cols}) VALUES (${placeholders})`).run(...vals);
+      db.prepare(`
+        INSERT INTO tenant_channel_credentials_v2
+        (id, tenant_id, channel, provider, credentials_json_encrypted, is_enabled, is_verified, verified_at,
+         webhook_secret_encrypted, webhook_url, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        uuidv4(),
+        cred.tenant_id,
+        cred.channel,
+        cred.provider,
+        cred.credentials_json_encrypted,
+        cred.is_enabled,
+        cred.is_verified,
+        cred.is_verified ? now : null,
+        webhookSecretEncrypted,
+        `https://engageninja.local/api/webhooks/${cred.provider}/${cred.channel}`,
+        now,
+        now
+      );
     }
   }
   console.log('  ✓ Channel credentials seeded (SMS + Email)');

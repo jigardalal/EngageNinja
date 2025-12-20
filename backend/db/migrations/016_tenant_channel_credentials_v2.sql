@@ -1,22 +1,22 @@
 -- Migration 016: Create tenant_channel_credentials_v2 table
 -- Stores provider credentials for SMS, WhatsApp, Email channels
 -- Credentials are encrypted at rest using ENCRYPTION_KEY env var
+-- PROVIDER-AGNOSTIC: Works with any provider (Twilio, AWS SES, Vonage, Bandwidth, etc.)
 -- One row per tenant per channel
 
 CREATE TABLE tenant_channel_credentials_v2 (
   id TEXT PRIMARY KEY,
   tenant_id TEXT NOT NULL,
   channel TEXT NOT NULL,              -- 'sms', 'whatsapp', 'email'
-  provider TEXT NOT NULL,             -- 'twilio', 'aws_ses', 'demo'
+  provider TEXT NOT NULL,             -- 'twilio', 'aws_ses', 'bandwidth', 'vonage', 'sendgrid', etc.
 
-  -- Twilio Credentials (for SMS/WhatsApp)
-  twilio_account_sid TEXT,
-  twilio_auth_token_encrypted TEXT,   -- AES-192-CBC encrypted
-
-  -- AWS SES Credentials (for Email)
-  aws_access_key_id_encrypted TEXT,
-  aws_secret_access_key_encrypted TEXT,
-  aws_region TEXT,
+  -- Provider Credentials (all providers' credentials stored in JSON, encrypted)
+  -- Examples:
+  --   Twilio: {"accountSid": "...", "authToken": "..."}
+  --   AWS SES: {"accessKeyId": "...", "secretAccessKey": "...", "region": "..."}
+  --   Sendgrid: {"apiKey": "..."}
+  --   Bandwidth: {"username": "...", "password": "..."}
+  credentials_json_encrypted TEXT,    -- AES-192-CBC encrypted JSON with all provider credentials
 
   -- Channel Status
   is_enabled BOOLEAN DEFAULT 0,       -- Can send messages on this channel?
@@ -29,7 +29,7 @@ CREATE TABLE tenant_channel_credentials_v2 (
   webhook_url TEXT,                   -- Full URL for provider callbacks
 
   -- Provider-Specific Data
-  provider_config_json TEXT,          -- JSON for provider-specific settings
+  provider_config_json TEXT,          -- JSON for provider-specific settings (rate limits, features, etc.)
 
   -- Dates
   created_at TIMESTAMP NOT NULL,
