@@ -8,6 +8,7 @@ export default defineConfig({
     port: process.env.FRONTEND_PORT || 3173,
     host: 'localhost',
     strictPort: false,
+    allowedHosts: ['nonoptimistical-cheerlessly-billy.ngrok-free.dev'],
     proxy: {
       '/api': {
         // Try to use BACKEND_PORT from env, but default to 5173 which is the project standard
