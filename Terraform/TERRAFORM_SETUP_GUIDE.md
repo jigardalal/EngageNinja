@@ -100,7 +100,6 @@ iam_user_name = "engageninja-app"
 sqs_message_retention_seconds = 1209600
 sqs_visibility_timeout_seconds = 300
 ses_configuration_set_name = "engageninja-email-events"
-sms_sending_limit = 1.0
 enable_cloudwatch_logs = true
 log_retention_days = 30
 
@@ -230,9 +229,6 @@ SES_REGION=us-east-1
 # Verified sender email (must be verified in SES console)
 SES_FROM_EMAIL=noreply@yourdomain.com
 
-# SMS Configuration
-SMS_REGION=us-east-1
-SMS_ORIGINATION_IDENTITY=+1234567890  # Your SMS phone number
 ```
 
 ---
@@ -262,18 +258,6 @@ aws ses get-identity-verification-attributes \
 ```
 
 ---
-
-## Step 9: Set Up SMS Phone Pool (Optional for now)
-
-AWS End User Messaging requires phone pools for SMS:
-
-```bash
-# AWS Console method:
-# 1. Go to AWS Console → End User Messaging
-# 2. Click "Phone numbers" → "Create pool"
-# 3. Choose country and capabilities (SMS)
-# 4. Request production access (currently in sandbox with limits)
-```
 
 ---
 

@@ -69,28 +69,6 @@ variable "tags" {
 }
 
 # ============================================================================
-# SMS Configuration Variables
-# ============================================================================
-
-variable "enable_sms_cloudwatch_logs" {
-  description = "Enable CloudWatch Logs for SMS events"
-  type        = bool
-  default     = true
-}
-
-variable "sms_pool_id" {
-  description = "SMS Pool ID for sending messages"
-  type        = string
-  default     = "pool-27b82c21158e4ec1a08c3cb7f8509603"
-}
-
-variable "sms_origination_identity" {
-  description = "SMS Origination Identity (phone number or short code)"
-  type        = string
-  default     = "+14255556395"
-}
-
-# ============================================================================
 # IAM Configuration Variables
 # ============================================================================
 

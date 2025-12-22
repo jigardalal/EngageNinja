@@ -4,7 +4,6 @@ This Terraform scaffold provisions all AWS infrastructure for EngageNinja's mess
 - **SQS Queues** for outbound messages and event processing
 - **SNS Topics** for event routing
 - **SES Configuration** for email tracking
-- **AWS End User Messaging** integration (SMS)
 - **IAM User & Access Keys** for application authentication
 - **CloudWatch Monitoring** for operational visibility
 
@@ -94,7 +93,7 @@ terraform output application_configuration
 - `engageninja-outbound-messages-dlq-dev` - Dead Letter Queue for failed messages
 
 ### SNS Topics
-- `engageninja-sms-events-dev` - SMS events topic (receives from AWS End User Messaging)
+- `engageninja-sms-events-dev` - SMS events topic (ingests delivery statuses from your messaging provider)
 - `engageninja-email-events-dev` - Email events topic (receives from SES)
 
 ### SES
@@ -125,7 +124,6 @@ project_name                   = "engageninja"
 sqs_message_retention_seconds  = 1209600  # 14 days
 sqs_visibility_timeout_seconds = 300      # 5 minutes
 ses_configuration_set_name     = "engageninja-email-events"
-sms_sending_limit              = 1.0      # USD per month
 enable_cloudwatch_logs         = true
 log_retention_days             = 30
 
@@ -166,7 +164,7 @@ EngageNinja Node.js App
        │       └─→ Message Processor
        │           ├─→ Send via WhatsApp (Meta API)
        │           ├─→ Send via Email (SES)
-       │           └─→ Send via SMS (AWS End User Messaging)
+       │           └─→ Send via SMS (Twilio or other provider)
        │
        └─→ Status Updates (Webhooks from providers)
            ├─→ SNS: SMS Events Topic ─→ SQS: SMS Events Queue
@@ -277,7 +275,6 @@ The generated IAM user has minimum required permissions:
 - SQS: Send, Receive, Delete messages
 - SNS: Publish to topics
 - SES: Send emails via SendEmail/SendRawEmail
-- SMS: Send SMS messages
 - CloudWatch Logs: Write logs
 
 ---
@@ -365,8 +362,8 @@ aws logs tail /aws/engageninja/dev/app --follow --region us-east-1
 - [AWS SQS Documentation](https://docs.aws.amazon.com/sqs/)
 - [AWS SNS Documentation](https://docs.aws.amazon.com/sns/)
 - [AWS SES Documentation](https://docs.aws.amazon.com/ses/)
-- [AWS End User Messaging](https://docs.aws.amazon.com/sms-voice/)
 - [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest)
+- [Twilio Messaging API](https://www.twilio.com/docs/sms)
 
 ---
 
@@ -408,7 +405,7 @@ For issues:
 
 ## 🧹 Complete Teardown
 
-Run `./destroy-complete.sh` from this directory after your tests to execute `terraform destroy` and clean up the AWS Pinpoint (configuration set, protect configuration, phone pool if provided) and SES configuration set in one go. Override `PROJECT_NAME`, `ENVIRONMENT`, `SES_CONFIGURATION_SET_NAME`, or `SMS_POOL_ID` via environment variables when you deployed with custom names.
+Run `./destroy-complete.sh` from this directory after your tests to execute `terraform destroy` and delete the SES configuration set. Override `PROJECT_NAME`, `ENVIRONMENT`, or `SES_CONFIGURATION_SET_NAME` via environment variables when you deployed with custom names.
 
 ---
 

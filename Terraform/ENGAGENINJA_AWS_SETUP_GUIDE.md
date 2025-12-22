@@ -40,7 +40,6 @@ The IAM user has the following policies:
 - ✅ SQS (send, receive, delete messages)
 - ✅ SNS (publish to topics)
 - ✅ SES (send emails, get configuration)
-- ✅ SMS (send SMS via End User Messaging)
 - ✅ CloudWatch Logs (write application logs)
 
 ---
@@ -57,7 +56,7 @@ SQS: engageninja-outbound-messages-dev (campaign messages)
 Worker Process (poll & send)
     ├→ WhatsApp (Meta Cloud API)
     ├→ Email (AWS SES)
-    └→ SMS (AWS End User Messaging)
+    └→ SMS (Twilio or other provider)
     ↓
 SNS Topics (events from providers)
     ├→ engageninja-email-events-dev (SES bounce/delivery/complaint)
@@ -175,7 +174,7 @@ setInterval(async () => {
 
 - **Name:** `engageninja-sms-events-dev`
 - **ARN:** `arn:aws:sns:us-east-1:433088583514:engageninja-sms-events-dev`
-- **Purpose:** AWS End User Messaging publishes SMS delivery status
+- **Purpose:** Captures SMS/WhatsApp delivery status events from your provider
 - **Subscription:** Connected to SQS sms-events queue (raw message delivery)
 - **Encryption:** AWS managed (alias/aws/sns)
 
@@ -204,10 +203,6 @@ SNS_EMAIL_EVENTS_TOPIC_ARN=arn:aws:sns:us-east-1:433088583514:engageninja-email-
 # SES Configuration
 SES_CONFIGURATION_SET=engageninja-email-events
 SES_REGION=us-east-1
-
-# SMS Configuration
-SMS_POOL_ID=pool-27b82c21158e4ec1a08c3cb7f8509603
-SMS_ORIGINATION_IDENTITY=+14255556395
 
 # CloudWatch Logs
 CLOUDWATCH_LOG_GROUP=/aws/engageninja/dev/app
@@ -426,15 +421,6 @@ aws logs tail /aws/engageninja/dev/app --follow --region us-east-1
 2. Run: `aws ses verify-email-identity --email-address noreply@yourdomain.com --region us-east-1`
 3. Check email inbox for verification link
 
-### SMS Sandbox Mode Limitations
-
-**Current Status:** Sandbox mode (limited to $1/month, 10 verified destinations)
-
-**Solution:** Request production access
-1. AWS Console → End User Messaging SMS → Phone pools
-2. Request TFN (Toll-Free Number) or 10DLC registration
-3. AWS will review and activate (2-3 business days)
-
 ### DLQ Messages Appear
 
 **Means:** Messages failed to send after 5 retries
@@ -460,7 +446,7 @@ aws logs tail /aws/engageninja/dev/app --follow --region us-east-1
 ## Production Migration Checklist
 
 - [ ] Request SES production access
-- [ ] Request SMS production access (10DLC/TFN)
+- [ ] Coordinate with your SMS/WhatsApp provider (e.g., Twilio) for production access (10DLC/TFN/TFN)
 - [ ] Verify production domain in SES
 - [ ] Rotate IAM access keys
 - [ ] Move to AWS Secrets Manager or IAM roles
@@ -478,7 +464,7 @@ aws logs tail /aws/engageninja/dev/app --follow --region us-east-1
 - **AWS SQS:** https://docs.aws.amazon.com/sqs/
 - **AWS SNS:** https://docs.aws.amazon.com/sns/
 - **AWS SES:** https://docs.aws.amazon.com/ses/
-- **AWS End User Messaging:** https://docs.aws.amazon.com/sms-voice/
+- **Twilio Messaging API:** https://www.twilio.com/docs/sms
 - **AWS SDK for JavaScript:** https://docs.aws.amazon.com/sdk-for-javascript/
 
 ---

@@ -95,10 +95,7 @@ output "next_steps" {
     3. Configure SES to use the Configuration Set:
        - All emails sent via AWS SDK should use ConfigurationSet: "${aws_ses_configuration_set.main.name}"
 
-    4. Set up SMS phone pools in AWS End User Messaging:
-       - AWS Console → End User Messaging → SMS
-       - Create phone number pool
-       - Request production access (currently in sandbox)
+    4. Configure your SMS/WhatsApp provider (e.g., Twilio) so delivery status callbacks flow into the ${aws_sqs_queue.sms_events.url} queue via your backend.
 
     5. Configure your Node.js application with SQS URLs:
        - Outbound messages: ${aws_sqs_queue.outbound_messages.url}
@@ -116,8 +113,8 @@ output "next_steps" {
     📚 Documentation:
        - AWS SQS: https://docs.aws.amazon.com/sqs/
        - AWS SNS: https://docs.aws.amazon.com/sns/
-       - AWS End User Messaging: https://docs.aws.amazon.com/sms-voice/
        - AWS SES: https://docs.aws.amazon.com/ses/
+       - Twilio Messaging: https://www.twilio.com/docs/sms
 
     ❓ Troubleshooting:
        - Check IAM permissions if access denied errors

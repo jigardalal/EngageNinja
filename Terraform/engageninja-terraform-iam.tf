@@ -140,43 +140,6 @@ resource "aws_iam_policy" "ses_policy" {
   )
 }
 
-# Policy for AWS End User Messaging SMS access
-resource "aws_iam_policy" "sms_policy" {
-  name        = "${var.project_name}-sms-policy-${var.environment}"
-  description = "Policy for EngageNinja app to send SMS via AWS End User Messaging"
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "SendSMS"
-        Effect = "Allow"
-        Action = [
-          "sms-voice:SendTextMessage",
-          "sms-voice:SendMediaMessage"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "GetPhoneNumberDetails"
-        Effect = "Allow"
-        Action = [
-          "sms-voice:DescribePhoneNumber",
-          "sms-voice:DescribePool"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-
-  tags = merge(
-    var.tags,
-    {
-      Name = "${var.project_name}-sms-policy"
-    }
-  )
-}
-
 # Policy for CloudWatch Logs (optional, for monitoring)
 resource "aws_iam_policy" "cloudwatch_logs_policy" {
   count       = var.enable_cloudwatch_logs ? 1 : 0
@@ -225,11 +188,6 @@ resource "aws_iam_user_policy_attachment" "sns" {
 resource "aws_iam_user_policy_attachment" "ses" {
   user       = aws_iam_user.app.name
   policy_arn = aws_iam_policy.ses_policy.arn
-}
-
-resource "aws_iam_user_policy_attachment" "sms" {
-  user       = aws_iam_user.app.name
-  policy_arn = aws_iam_policy.sms_policy.arn
 }
 
 resource "aws_iam_user_policy_attachment" "cloudwatch_logs" {

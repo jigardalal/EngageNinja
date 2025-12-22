@@ -2,7 +2,7 @@
 # SNS Topics for Event Notifications
 # ============================================================================
 
-# Topic for SMS delivery events from AWS End User Messaging
+# Topic for SMS delivery events (status updates from your messaging provider)
 resource "aws_sns_topic" "sms_events" {
   name              = "engageninja-sms-events-${var.environment}"
   display_name      = "EngageNinja SMS Events"
