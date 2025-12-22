@@ -46,7 +46,7 @@ export default function InvoicesPage({ embedded = false }) {
 
   const Shell = ({ children }) => (
     embedded ? <div className="space-y-6">{children}</div> : (
-      <AppShell title="Invoices" subtitle="Download your billing receipts">
+      <AppShell hideTitleBlock title="Invoices" subtitle="Download your billing receipts">
         {children}
       </AppShell>
     )

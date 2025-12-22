@@ -1,76 +1,74 @@
 import React from 'react';
 import { cn } from '../../lib/utils';
 
-export function Table({ className, children, ...props }) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
-      <div className="overflow-x-auto">
-        <table
-          className={cn('min-w-full divide-y divide-[var(--border)] text-sm text-left', className)}
-          {...props}
-        >
-          {children}
-        </table>
-      </div>
+export const Table = React.forwardRef(({ className, children, ...props }, ref) => (
+  <div
+    className="relative w-full overflow-hidden"
+  >
+    <div className="relative w-full overflow-auto">
+      <table ref={ref} className={cn('min-w-full text-sm', className)} {...props}>
+        {children}
+      </table>
     </div>
-  );
-}
+  </div>
+));
 
-export function TableHeader({ className, children, ...props }) {
-  return (
-    <thead className={cn('bg-black/5 text-[var(--text-muted)]', className)} {...props}>
-      {children}
-    </thead>
-  );
-}
+export const TableHeader = React.forwardRef(({ className, children, ...props }, ref) => (
+  <thead ref={ref} className={cn('[&_tr]:border-b border-white/20 bg-white/50', className)} {...props}>
+    {children}
+  </thead>
+));
 
-export function TableBody({ className, children, ...props }) {
-  return (
-    <tbody className={cn('divide-y divide-[var(--border)] bg-[var(--card)]', className)} {...props}>
-      {children}
-    </tbody>
-  );
-}
+export const TableBody = React.forwardRef(({ className, children, ...props }, ref) => (
+  <tbody ref={ref} className={cn('[&_tr]:border-b border-white/10 bg-white/10', className)} {...props}>
+    {children}
+  </tbody>
+));
 
-export function TableRow({ className, children, ...props }) {
-  return (
-    <tr
-      className={cn('transition hover:bg-black/3 data-[state=selected]:bg-primary-50', className)}
-      {...props}
-    >
-      {children}
-    </tr>
-  );
-}
+export const TableRow = React.forwardRef(({ className, children, ...props }, ref) => (
+  <tr
+    ref={ref}
+    className={cn(
+      'border-b border-white/10 transition hover:bg-white/60 dark:hover:bg-[color:var(--card)]/50',
+      className
+    )}
+    {...props}
+  >
+    {children}
+  </tr>
+));
 
-export function TableHead({ className, children, ...props }) {
-  return (
-    <th
-      className={cn('px-4 py-3 text-xs font-semibold uppercase tracking-wide', className)}
-      {...props}
-    >
-      {children}
-    </th>
-  );
-}
+export const TableHead = React.forwardRef(({ className, children, ...props }, ref) => (
+  <th
+    ref={ref}
+    className={cn(
+      'h-12 px-4 text-left align-middle text-xs font-semibold uppercase tracking-[0.3em]',
+      className
+    )}
+    {...props}
+  >
+    {children}
+  </th>
+));
 
-export function TableCell({ className, children, ...props }) {
-  return (
-    <td className={cn('px-4 py-3 text-[var(--text)]', className)} {...props}>
-      {children}
-    </td>
-  );
-}
+export const TableCell = React.forwardRef(({ className, children, ...props }, ref) => (
+  <td
+    ref={ref}
+    className={cn('p-4 align-middle text-sm text-[var(--text)]', className)}
+    {...props}
+  >
+    {children}
+  </td>
+));
 
-export function TableCaption({ className, children, ...props }) {
-  return (
-    <caption
-      className={cn('px-4 py-3 text-center text-sm text-[var(--text-muted)]', className)}
-      {...props}
-    >
-      {children}
-    </caption>
-  );
-}
+export const TableCaption = React.forwardRef(({ className, children, ...props }, ref) => (
+  <caption
+    ref={ref}
+    className={cn('px-4 py-3 text-center text-sm text-[var(--text-muted)]', className)}
+    {...props}
+  >
+    {children}
+  </caption>
+));
 
 export default Table;

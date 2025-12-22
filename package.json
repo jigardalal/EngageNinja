@@ -40,5 +40,8 @@
   "devDependencies": {
     "concurrently": "^8.2.2",
     "puppeteer-core": "^21.11.0"
+  },
+  "dependencies": {
+    "@tanstack/react-table": "^8.21.3"
   }
 }

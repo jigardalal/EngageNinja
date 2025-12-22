@@ -126,7 +126,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <AppShell title="Profile" subtitle="Manage your account info and password">
+    <AppShell hideTitleBlock title="Profile" subtitle="Manage your account info and password">
       <PageHeader
         icon={User}
         title="Profile & security"

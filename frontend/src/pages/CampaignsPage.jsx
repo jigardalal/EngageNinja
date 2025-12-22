@@ -195,7 +195,7 @@ export default function CampaignsPage() {
   ]
 
   return (
-    <AppShell title="Campaigns" subtitle="Create and manage WhatsApp and Email campaigns">
+    <AppShell hideTitleBlock title="Campaigns" subtitle="Create and manage WhatsApp and Email campaigns">
       <div className="space-y-6">
         <PageHeader
           icon={Sparkles}

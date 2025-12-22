@@ -46,7 +46,14 @@ const getAdminNavItems = () => [
   { label: 'Tags', to: '/admin/tags', icon: TagIcon, activeWhen: (path) => path.startsWith('/admin/tags') }
 ]
 
-export default function AppShell({ title, subtitle, actions, children, hideTitleBlock = false }) {
+export default function AppShell({
+  title,
+  subtitle,
+  actions,
+  children,
+  hideTitleBlock = false,
+  hideFooter = false
+}) {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, tenants = [], activeTenant, logout, userRole, isPlatformAdmin, hasPlatformRole } = useAuth()
@@ -513,15 +520,17 @@ export default function AppShell({ title, subtitle, actions, children, hideTitle
         {children}
       </main>
 
-      <footer className="border-t border-[var(--border)] bg-[var(--card)] backdrop-blur">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-sm text-[var(--text-muted)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <span>EngageNinja © 2025</span>
-          <div className="flex items-center gap-4">
-            <span className="text-[var(--text-muted)]">Frontend: 3173</span>
-            <span className="text-[var(--text-muted)]">Backend: 5173</span>
+      {!hideFooter && (
+        <footer className="border-t border-[var(--border)] bg-[var(--card)] backdrop-blur">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-sm text-[var(--text-muted)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <span>EngageNinja © 2025</span>
+            <div className="flex items-center gap-4">
+              <span className="text-[var(--text-muted)]">Frontend: 3173</span>
+              <span className="text-[var(--text-muted)]">Backend: 5173</span>
+            </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   )
 }

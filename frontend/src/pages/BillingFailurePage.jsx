@@ -10,7 +10,7 @@ export default function BillingFailurePage() {
   const navigate = useNavigate()
 
   return (
-    <AppShell title="Billing" subtitle="Payment failed">
+    <AppShell hideTitleBlock title="Billing" subtitle="Payment failed">
       <PageHeader
         icon={AlertCircle}
         title="Payment failed"

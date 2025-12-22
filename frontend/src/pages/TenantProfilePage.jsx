@@ -767,7 +767,7 @@ export default function TenantProfilePage({ embedded = false } = {}) {
     return embedded ? (
       <Alert type="error" title="Access denied">Only tenant admin/owner can edit tenant profile.</Alert>
     ) : (
-      <AppShell title="Tenant Profile" subtitle="Access denied">
+      <AppShell hideTitleBlock title="Tenant Profile" subtitle="Access denied">
         <Alert type="error" title="Access denied">Only tenant admin/owner can edit tenant profile.</Alert>
       </AppShell>
     );

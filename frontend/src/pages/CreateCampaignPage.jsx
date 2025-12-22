@@ -504,7 +504,7 @@ export default function CreateCampaignPage() {
 
   if (loadingTags || loadingContacts || loadingTemplates) {
     return (
-      <AppShell title="Create Campaign">
+      <AppShell hideTitleBlock title="Create Campaign">
         <LoadingState message="Loading form..." />
       </AppShell>
     )

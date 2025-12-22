@@ -19,3 +19,4 @@ export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 export { NavPills } from './Navigation';
 export { LoadingState, ErrorState, EmptyState } from './States';
 export { PrimaryAction, SecondaryAction, DestructiveAction, GhostAction } from './ActionButtons';
+export { DataTable } from '../DataTable';

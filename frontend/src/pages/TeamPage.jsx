@@ -43,7 +43,7 @@ export const TeamPage = ({ embedded = false } = {}) => {
 
   const Shell = ({ children }) => (
     embedded ? <>{children}</> : (
-      <AppShell
+      <AppShell hideTitleBlock
         title="Team Members"
         subtitle="Manage your team members and their roles"
       >

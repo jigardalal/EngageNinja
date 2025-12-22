@@ -65,7 +65,7 @@ export const TenantsPage = () => {
   }
 
   return (
-    <AppShell title="Tenants" subtitle="Switch between your EngageNinja workspaces">
+    <AppShell hideTitleBlock title="Tenants" subtitle="Switch between your EngageNinja workspaces">
       <PageHeader
         icon={Building2}
         title="Workspace switcher"

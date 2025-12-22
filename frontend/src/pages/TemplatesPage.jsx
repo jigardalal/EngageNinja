@@ -51,7 +51,7 @@ export const TemplatesPage = ({ embedded = false } = {}) => {
   const [versionLoading, setVersionLoading] = useState(false)
   const [versionError, setVersionError] = useState('')
 
-  const Shell = ({ children }) => (embedded ? <>{children}</> : <AppShell>{children}</AppShell>)
+  const Shell = ({ children }) => (embedded ? <>{children}</> : <AppShell hideTitleBlock>{children}</AppShell>)
 
   useEffect(() => {
     fetchTemplates()

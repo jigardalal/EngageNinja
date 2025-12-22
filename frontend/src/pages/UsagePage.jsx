@@ -38,7 +38,7 @@ export default function UsagePage({ embedded = false }) {
 
   const Shell = ({ children }) => (
     embedded ? <div className="space-y-6">{children}</div> : (
-      <AppShell title="Usage & Billing" subtitle="Monitor usage and limits">
+      <AppShell hideTitleBlock title="Usage & Billing" subtitle="Monitor usage and limits">
         {children}
       </AppShell>
     )

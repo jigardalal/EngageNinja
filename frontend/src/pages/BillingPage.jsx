@@ -171,7 +171,7 @@ export default function BillingPage({ embedded = false }) {
 
   const Shell = ({ children }) => (
     embedded ? <div className="space-y-6">{children}</div> : (
-      <AppShell title="Billing" subtitle="Manage your subscription and payments">
+      <AppShell hideTitleBlock title="Billing" subtitle="Manage your subscription and payments">
         {children}
       </AppShell>
     )

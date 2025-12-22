@@ -125,7 +125,7 @@ export const ContactDetailPage = () => {
 
   if (loading) {
     return (
-      <AppShell title="Contact" subtitle="Loading contact details">
+      <AppShell hideTitleBlock title="Contact" subtitle="Loading contact details">
         <LoadingState message="Loading contact..." />
       </AppShell>
     );

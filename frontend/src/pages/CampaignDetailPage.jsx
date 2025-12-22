@@ -259,7 +259,7 @@ export default function CampaignDetailPage() {
 
   if (loading) {
     return (
-      <AppShell title="Campaign">
+      <AppShell hideTitleBlock title="Campaign">
         <LoadingState message="Loading campaign..." />
       </AppShell>
     )

@@ -15,6 +15,11 @@
   --text-muted: #475569;
   --accent-from: #2f7dff;
   --accent-to: #5c99ff;
+  /* Grid colors */
+  --grid-bg: #dbeafe;
+  --grid-header: #bfdbfe;
+  --grid-border: #4ade80;
+  --grid-glow: rgba(74, 222, 128, 0.3);
 }
 
 .dark {
@@ -28,6 +33,11 @@
   --text-muted: #cbd5e1;
   --accent-from: #2f7dff;
   --accent-to: #a78bfa;
+  /* Grid colors */
+  --grid-bg: #001f3f;
+  --grid-header: #003d66;
+  --grid-border: #059669;
+  --grid-glow: rgba(5, 150, 105, 0.2);
 }
 
 html {

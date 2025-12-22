@@ -146,7 +146,7 @@ export default function TagsPage({ embedded = false } = {}) {
 
   const Shell = ({ children }) => (
     embedded ? <>{children}</> : (
-      <AppShell title="Tags" subtitle="Manage tags for this workspace">
+      <AppShell hideTitleBlock title="Tags" subtitle="Manage tags for this workspace">
         {children}
       </AppShell>
     )

@@ -14,7 +14,10 @@ export default function PageHeader({
   return (
     <Card
       variant="glass"
-      className={cn('w-full border border-white/30 bg-white/60 dark:bg-slate-900/60 shadow-lg', className)}
+      className={cn(
+        'w-full border-none bg-transparent shadow-none',
+        className
+      )}
     >
       <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center">

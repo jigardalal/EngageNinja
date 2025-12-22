@@ -15,7 +15,7 @@ export default function BillingSuccessPage() {
   }, [])
 
   return (
-    <AppShell title="Billing" subtitle="Payment successful">
+    <AppShell hideTitleBlock title="Billing" subtitle="Payment successful">
       <PageHeader
         icon={CheckCircle}
         title="Payment confirmed"

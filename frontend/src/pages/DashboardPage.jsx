@@ -99,7 +99,7 @@ export const DashboardPage = () => {
   }, []);
 
   return (
-    <AppShell title="Dashboard" subtitle="Quick overview of your EngageNinja workspace">
+    <AppShell hideTitleBlock title="Dashboard" subtitle="Quick overview of your EngageNinja workspace">
       <div className="space-y-6">
         <PageHeader
           icon={Sparkles}

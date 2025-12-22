@@ -132,7 +132,7 @@ export const CreateTemplatePage = () => {
 
   if (loading) {
     return (
-      <AppShell>
+      <AppShell hideTitleBlock>
         <LoadingState message="Creating template..." />
       </AppShell>
     )

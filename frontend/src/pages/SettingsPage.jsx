@@ -576,7 +576,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <AppShell title="Settings" subtitle="Configure your channels and integrations">
+      <AppShell hideTitleBlock title="Settings" subtitle="Configure your channels and integrations">
         <PageHeader
           icon={Settings}
           title="Workspace configuration"

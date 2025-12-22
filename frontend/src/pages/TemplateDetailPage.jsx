@@ -68,7 +68,7 @@ export const TemplateDetailPage = () => {
 
   if (loading) {
     return (
-      <AppShell>
+      <AppShell hideTitleBlock>
         <LoadingState message="Loading template..." />
       </AppShell>
     )
