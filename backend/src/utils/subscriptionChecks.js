@@ -9,15 +9,19 @@
  */
 function canTenantSendCampaigns(db, tenantId) {
   try {
-    const tenant = db.prepare('SELECT * FROM tenants WHERE id = ?').get(tenantId);
-    if (!tenant) {
-      return { allowed: false, reason: 'Tenant not found' };
-    }
+  const tenant = db.prepare('SELECT * FROM tenants WHERE id = ?').get(tenantId);
+  if (!tenant) {
+    return { allowed: false, reason: 'Tenant not found' };
+  }
 
-    // Free plan can always send campaigns
-    if (tenant.plan_id === 'free' || !tenant.plan_id) {
-      return { allowed: true };
-    }
+  if (tenant.is_demo) {
+    return { allowed: true };
+  }
+
+  // Free plan can always send campaigns
+  if (tenant.plan_id === 'free' || !tenant.plan_id) {
+    return { allowed: true };
+  }
 
     // Check subscription status
     const subscription = db.prepare('SELECT * FROM subscriptions WHERE tenant_id = ?').get(tenantId);

@@ -21,6 +21,9 @@ class MetricsEmitter extends EventEmitter {
     // 30 minute timeout (1800000ms)
     this.IDLE_TIMEOUT = 30 * 60 * 1000;
 
+    // Allow more listeners for busy campaigns (SSE clients)
+    this.setMaxListeners(50);
+
     // Cleanup old connections every 5 minutes
     this.cleanupInterval = setInterval(() => {
       this.cleanupIdleConnections();

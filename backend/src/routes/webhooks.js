@@ -787,22 +787,10 @@ router.post('/email', async (req, res) => {
   }
 });
 
-/**
- * POST /webhooks/twilio
- * Twilio status callback for SMS and WhatsApp messages
- *
- * Twilio sends form-urlencoded data with:
- * - MessageSid: Provider message ID
- * - MessageStatus: sent, delivered, failed, undelivered, read
- * - AccountSid: Twilio account identifier
- * - To/From: Phone numbers
- */
-router.post('/twilio', express.urlencoded({ extended: true }), async (req, res) => {
+const handleTwilioWebhook = async (req, res) => {
   try {
-    // 1. Log incoming webhook
     logWebhookEvent('twilio', req.body, req.headers);
 
-    // 2. Extract message info
     const { MessageSid, MessageStatus } = req.body;
 
     if (!MessageSid || !MessageStatus) {
@@ -810,7 +798,6 @@ router.post('/twilio', express.urlencoded({ extended: true }), async (req, res) 
       return res.status(400).send('Missing MessageSid or MessageStatus');
     }
 
-    // 3. Find message by provider_message_id
     const message = db.prepare(`
       SELECT m.id, m.tenant_id, m.campaign_id, m.status, m.channel
       FROM messages m
@@ -820,55 +807,47 @@ router.post('/twilio', express.urlencoded({ extended: true }), async (req, res) 
 
     if (!message) {
       console.log(`[Webhook] Twilio: Message not found for MessageSid: ${MessageSid}`);
-      return res.status(200).send('OK'); // Acknowledge but don't process
+      return res.status(200).send('OK');
     }
 
-    // 4. Get provider for signature verification
     let provider;
     try {
       provider = await getProvider(message.tenant_id, message.channel);
     } catch (error) {
       console.error(`[Webhook] Twilio: Failed to get provider for message:`, error.message);
-      return res.status(200).send('OK'); // Acknowledge but can't verify
+      return res.status(200).send('OK');
     }
 
-    // 5. Verify webhook signature if enabled
     if (process.env.ENABLE_WEBHOOK_VERIFICATION === 'true') {
       const signature = req.headers['x-twilio-signature'];
-      const webhookUrl = `${process.env.BACKEND_URL || 'http://localhost:5173'}/webhooks/twilio`;
+      const webhookUrl = `${process.env.BACKEND_URL || 'http://localhost:5173'}${req.originalUrl}`;
 
       try {
         const isValid = provider.verifyWebhookSignature(req.body, signature, webhookUrl);
-
         if (!isValid) {
           console.error('[Webhook] Twilio: Invalid signature for MessageSid:', MessageSid);
           return res.status(403).send('Invalid signature');
         }
       } catch (error) {
         console.warn('[Webhook] Twilio: Signature verification error:', error.message);
-        // Continue anyway, might not have webhook URL configured
       }
     }
 
-    // 6. Parse webhook using provider
     let parsed;
     try {
       parsed = provider.parseWebhook(req.body, req.headers['x-twilio-signature']);
-
       if (parsed.error) {
         console.error('[Webhook] Twilio: Parsing failed:', parsed.error);
-        return res.status(200).send('OK'); // Acknowledge but can't parse
+        return res.status(200).send('OK');
       }
     } catch (error) {
       console.error('[Webhook] Twilio: Parsing exception:', error.message);
       return res.status(200).send('OK');
     }
 
-    // 7. Update message status
     const now = new Date().toISOString();
     const statusReason = req.body.ErrorCode ? `Error ${req.body.ErrorCode}: ${req.body.ErrorMessage}` : null;
 
-    // Check for duplicate webhook event
     const isDuplicate = db.prepare(`
       SELECT id FROM message_status_events
       WHERE message_id = ? AND new_status = ? AND created_at > datetime('now', '-60 seconds')
@@ -937,7 +916,10 @@ router.post('/twilio', express.urlencoded({ extended: true }), async (req, res) 
     console.error('[Webhook] Twilio: Unexpected error:', error);
     res.status(500).send('Internal server error');
   }
-});
+};
+
+router.post('/twilio', express.urlencoded({ extended: true }), handleTwilioWebhook);
+router.post('/twilio/sms', express.urlencoded({ extended: true }), handleTwilioWebhook);
 
 /**
  * GET /webhooks/health

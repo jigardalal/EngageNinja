@@ -285,8 +285,7 @@ export const ContactsPage = () => {
       label: 'Edit',
       icon: <Edit className="h-4 w-4" />,
       onClick: (contact) => {
-        // Edit action - you can implement this as needed
-        console.log('Edit contact:', contact)
+        navigate(`/contacts/${contact.id}`)
       }
     },
     {

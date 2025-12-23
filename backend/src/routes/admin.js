@@ -689,7 +689,8 @@ router.patch('/tenants/:tenantId', (req, res) => {
       support_email,
       wa_messages_override,
       emails_override,
-      sms_override
+      sms_override,
+      isDemo
     } = req.body;
 
     // Verify tenant exists
@@ -739,6 +740,13 @@ router.patch('/tenants/:tenantId', (req, res) => {
       updates.push('name = ?');
       params.push(name.trim());
       changes.name = name.trim();
+    }
+
+    if (isDemo !== undefined) {
+      const demoValue = parseBooleanValue(isDemo);
+      updates.push('is_demo = ?');
+      params.push(demoValue);
+      changes.isDemo = Boolean(demoValue);
     }
 
     if (limits !== undefined) {

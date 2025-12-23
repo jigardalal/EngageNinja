@@ -12,6 +12,8 @@ const crypto = require('crypto');
 const WHATSAPP_RATE_LIMIT = 80;
 // Rate limiting: max 14 emails per second for SES
 const EMAIL_RATE_LIMIT = 14;
+// Rate limiting: approximate limit for Twilio SMS sends per second
+const SMS_RATE_LIMIT = 40;
 const RATE_WINDOW_MS = 1000;
 
 // Retry configuration
@@ -21,7 +23,8 @@ const RETRY_DELAY_MS = 5000; // 5 seconds between retries
 // Track API call rate per channel
 let apiCallTimestamps = {
   whatsapp: [],
-  email: []
+  email: [],
+  sms: []
 };
 
 /**
@@ -31,7 +34,12 @@ let apiCallTimestamps = {
  */
 function canMakeApiCall(channel = 'whatsapp') {
   const now = Date.now();
-  const limit = channel === 'email' ? EMAIL_RATE_LIMIT : WHATSAPP_RATE_LIMIT;
+  let limit = WHATSAPP_RATE_LIMIT;
+  if (channel === 'email') {
+    limit = EMAIL_RATE_LIMIT;
+  } else if (channel === 'sms') {
+    limit = SMS_RATE_LIMIT;
+  }
 
   // Remove timestamps older than the rate window
   if (!apiCallTimestamps[channel]) {

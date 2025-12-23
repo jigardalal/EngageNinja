@@ -49,6 +49,7 @@ export default function CreateCampaignPage() {
     message_content: '',
     subject: '',
     textBody: '',
+    smsBody: '',
     selectedTags: [],
     audienceType: 'all'
   })
@@ -103,6 +104,13 @@ export default function CreateCampaignPage() {
         }
         setLoadedMessageContent(parsedContent)
 
+        let smsBody = ''
+        if (campaign.channel === 'sms') {
+          smsBody = typeof campaign.message_content === 'string'
+            ? campaign.message_content
+            : ''
+        }
+
         setFormData(prev => ({
           ...prev,
           name: campaign.name || '',
@@ -112,6 +120,7 @@ export default function CreateCampaignPage() {
           message_content: parsedContent.htmlBody || parsedContent.textBody || '',
           textBody: parsedContent.textBody || '',
           subject: parsedContent.subject || '',
+          smsBody,
           audienceType: (campaign.audience_filters && campaign.audience_filters.tags && campaign.audience_filters.tags.length > 0) ? 'filtered' : 'all',
           selectedTags: (campaign.audience_filters && campaign.audience_filters.tags) ? campaign.audience_filters.tags : []
         }))
@@ -263,7 +272,9 @@ export default function CreateCampaignPage() {
       channel: e.target.value,
       template_id: '',
       message_content: '',
-      subject: ''
+      subject: '',
+      textBody: '',
+      smsBody: ''
     }))
     setTemplateVariables({})
     setTemplateVariableSources({})
@@ -400,6 +411,12 @@ export default function CreateCampaignPage() {
           return false
         }
       }
+      if (formData.channel === 'sms') {
+        if (!formData.smsBody?.trim()) {
+          setStepError('SMS message content is required.')
+          return false
+        }
+      }
     }
     setStepError('')
     return true
@@ -445,7 +462,7 @@ export default function CreateCampaignPage() {
         })
         const media = headerMediaLink ? { header_link: headerMediaLink.trim() } : undefined
         messageContentPayload = JSON.stringify({ static: staticVars, mapping, ...(media ? { media } : {}) })
-      } else {
+      } else if (formData.channel === 'email') {
         const htmlContent = formData.message_content || ''
         const fallbackText = formData.textBody?.trim() || stripHtml(htmlContent) || htmlContent
         messageContentPayload = JSON.stringify({
@@ -453,6 +470,8 @@ export default function CreateCampaignPage() {
           htmlBody: htmlContent,
           textBody: fallbackText
         })
+      } else if (formData.channel === 'sms') {
+        messageContentPayload = (formData.smsBody || '').trim()
       }
 
       const payload = {
@@ -565,6 +584,17 @@ export default function CreateCampaignPage() {
                   />
                   <span>📧 Email</span>
                 </label>
+                <label className="flex items-center gap-3 text-[var(--text)]">
+                  <input
+                    type="radio"
+                    name="channel"
+                    value="sms"
+                    checked={formData.channel === 'sms'}
+                    onChange={handleChannelChange}
+                    className="h-4 w-4 text-primary-600"
+                  />
+                  <span>💬 SMS</span>
+                </label>
               </div>
             </div>
           </div>
@@ -630,223 +660,266 @@ export default function CreateCampaignPage() {
           </div>
         )
       case 2:
-        return formData.channel === 'whatsapp' ? (
-          <div className="border rounded-xl border-[var(--border)] p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-xl">WhatsApp Configuration</CardTitle>
-                <CardDescription>Select a template synced from Settings</CardDescription>
+        if (formData.channel === 'whatsapp') {
+          return (
+            <div className="border rounded-xl border-[var(--border)] p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl">WhatsApp Configuration</CardTitle>
+                  <CardDescription>Select a template synced from Settings</CardDescription>
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label>Template *</Label>
-              {templates.length > 0 ? (
-                <>
-                  <select
-                    name="template_id"
-                    value={formData.template_id}
-                    onChange={handleTemplateChange}
-                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
-                  >
-                    <option value="">Select a template</option>
-                    {templates.map((template) => (
-                      <option key={template.id} value={template.id}>
-                        {template.name}
-                        {template.variables && template.variables.length > 0
-                          ? ` (${template.variables.join(', ')})`
-                          : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-sm text-[var(--text-muted)]">
-                    Templates synced from your WhatsApp Business account
-                  </p>
-                  {formData.template_id && (
-                    <div className="mt-3 rounded-lg border border-dashed border-[var(--border)] bg-[var(--card)] p-3">
-                      <p className="text-xs font-semibold text-[var(--text)]">Required placeholders</p>
-                      {(() => {
-                        const tmpl = getSelectedTemplate()
-                        const vars = tmpl?.variables || []
-                        if (vars.length === 0 && typeof tmpl?.variable_count === 'number') {
+              <div className="space-y-2">
+                <Label>Template *</Label>
+                {templates.length > 0 ? (
+                  <>
+                    <select
+                      name="template_id"
+                      value={formData.template_id}
+                      onChange={handleTemplateChange}
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                    >
+                      <option value="">Select a template</option>
+                      {templates.map((template) => (
+                        <option key={template.id} value={template.id}>
+                          {template.name}
+                          {template.variables && template.variables.length > 0
+                            ? ` (${template.variables.join(', ')})`
+                            : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-sm text-[var(--text-muted)]">
+                      Templates synced from your WhatsApp Business account
+                    </p>
+                    {formData.template_id && (
+                      <div className="mt-3 rounded-lg border border-dashed border-[var(--border)] bg-[var(--card)] p-3">
+                        <p className="text-xs font-semibold text-[var(--text)]">Required placeholders</p>
+                        {(() => {
+                          const tmpl = getSelectedTemplate()
+                          const vars = tmpl?.variables || []
+                          if (vars.length === 0 && typeof tmpl?.variable_count === 'number') {
+                            return (
+                              <p className="text-xs text-[var(--text-muted)]">
+                                Template expects {tmpl.variable_count} placeholders.
+                              </p>
+                            )
+                          }
+                          if (vars.length === 0) {
+                            return <p className="text-xs text-[var(--text-muted)]">No variables required.</p>
+                          }
                           return (
                             <p className="text-xs text-[var(--text-muted)]">
-                              Template expects {tmpl.variable_count} placeholders.
+                              {vars.map((v, i) => `${v}${i < vars.length - 1 ? ', ' : ''}`)}
                             </p>
                           )
-                        }
-                        if (vars.length === 0) {
-                          return <p className="text-xs text-[var(--text-muted)]">No variables required.</p>
-                        }
-                        return (
-                          <p className="text-xs text-[var(--text-muted)]">
-                            {vars.map((v, i) => `${v}${i < vars.length - 1 ? ', ' : ''}`)}
+                        })()}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <Alert variant="warning">
+                    No templates available. Please sync templates in Settings first.
+                  </Alert>
+                )}
+              </div>
+
+              {formData.template_id && templates.length > 0 && (
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
+                  {(() => {
+                    const selectedTemplate = getSelectedTemplate()
+                    return (
+                      <>
+                        <p className="text-sm font-semibold text-[var(--text)] mb-2">Template Variables</p>
+                        {selectedTemplate && selectedTemplate.variables && selectedTemplate.variables.length > 0 ? (
+                          <div className="space-y-3">
+                            <p className="text-sm text-[var(--text-muted)]">
+                              Provide values for each variable below or map to a contact field.
+                            </p>
+                            <div className="grid gap-3 md:grid-cols-2">
+                              {selectedTemplate.variables.map((variable) => {
+                                const source = templateVariableSources[variable] || 'custom'
+                                return (
+                                  <div key={variable} className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <Label className="text-sm font-semibold">{variable}</Label>
+                                      <select
+                                        value={source}
+                                        onChange={(e) => handleTemplateVariableSourceChange(variable, e.target.value)}
+                                        className="rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-xs text-[var(--text)]"
+                                      >
+                                        <option value="custom">Custom value</option>
+                                        <option value="contact.name">Contact name</option>
+                                        <option value="contact.email">Contact email</option>
+                                        <option value="contact.phone">Contact phone</option>
+                                      </select>
+                                    </div>
+                                    {source !== 'custom' ? (
+                                      <p className="text-xs text-[var(--text-muted)]">
+                                        Will use {source.replace('contact.', 'contact ')}
+                                      </p>
+                                    ) : (
+                                      <Input
+                                        type="text"
+                                        value={templateVariables[variable] || ''}
+                                        onChange={(e) => handleTemplateVariableChange(variable, e.target.value)}
+                                        placeholder={`Value for ${variable}`}
+                                      />
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                            {selectedTemplate.header_type && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(selectedTemplate.header_type) && (
+                              <div className="space-y-2">
+                                <Label className="text-sm font-semibold">Media Header URL</Label>
+                                <Input
+                                  type="url"
+                                  value={headerMediaLink}
+                                  onChange={(e) => setHeaderMediaLink(e.target.value)}
+                                  placeholder="https://example.com/your-media.jpg"
+                                />
+                                <p className="text-xs text-[var(--text-muted)]">
+                                  Required for {selectedTemplate.header_type.toLowerCase()} headers. Must be a publicly accessible URL.
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-[var(--text-muted)]">
+                            This template has no variables and will send the same message to all contacts.
                           </p>
-                        )
-                      })()}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <Alert variant="warning">
-                  No templates available. Please sync templates in Settings first.
-                </Alert>
+                        )}
+
+                        {(selectedTemplate?.body || selectedTemplate?.header_text || selectedTemplate?.footer_text) && (
+                          <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--card-alt, var(--card))] p-4">
+                            <p className="text-sm font-semibold text-[var(--text)] mb-2">Preview</p>
+                            <div className="space-y-2">
+                              {selectedTemplate.header_text && (
+                                <p className="text-xs uppercase tracking-wide text-[var(--text-muted)]">
+                                  {renderTemplateText(selectedTemplate.header_text, templateVariableSources, templateVariables, contacts)}
+                                </p>
+                              )}
+                              {selectedTemplate.header_type && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(selectedTemplate.header_type) && (
+                                <p className="text-xs text-[var(--text-muted)]">
+                                  Media header ({selectedTemplate.header_type.toLowerCase()}): {headerMediaLink || 'No URL provided'}
+                                </p>
+                              )}
+                              {selectedTemplate.body && (
+                                <p className="text-sm whitespace-pre-wrap text-[var(--text)]">
+                                  {renderTemplateText(selectedTemplate.body, templateVariableSources, templateVariables, contacts)}
+                                </p>
+                              )}
+                              {selectedTemplate.footer_text && (
+                                <p className="text-xs text-[var(--text-muted)]">
+                                  {renderTemplateText(selectedTemplate.footer_text, templateVariableSources, templateVariables, contacts)}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
+                </div>
               )}
             </div>
+          )
+        }
 
-            {formData.template_id && templates.length > 0 && (
-              <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
-                {(() => {
-                  const selectedTemplate = getSelectedTemplate()
-                  return (
-                    <>
-                      <p className="text-sm font-semibold text-[var(--text)] mb-2">Template Variables</p>
-                      {selectedTemplate && selectedTemplate.variables && selectedTemplate.variables.length > 0 ? (
-                        <div className="space-y-3">
-                          <p className="text-sm text-[var(--text-muted)]">
-                            Provide values for each variable below or map to a contact field.
-                          </p>
-                          <div className="grid gap-3 md:grid-cols-2">
-                            {selectedTemplate.variables.map((variable) => {
-                              const source = templateVariableSources[variable] || 'custom'
-                              return (
-                                <div key={variable} className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <Label className="text-sm font-semibold">{variable}</Label>
-                                    <select
-                                      value={source}
-                                      onChange={(e) => handleTemplateVariableSourceChange(variable, e.target.value)}
-                                      className="rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-xs text-[var(--text)]"
-                                    >
-                                      <option value="custom">Custom value</option>
-                                      <option value="contact.name">Contact name</option>
-                                      <option value="contact.email">Contact email</option>
-                                      <option value="contact.phone">Contact phone</option>
-                                    </select>
-                                  </div>
-                                  {source !== 'custom' ? (
-                                    <p className="text-xs text-[var(--text-muted)]">
-                                      Will use {source.replace('contact.', 'contact ')}
-                                    </p>
-                                  ) : (
-                                    <Input
-                                      type="text"
-                                      value={templateVariables[variable] || ''}
-                                      onChange={(e) => handleTemplateVariableChange(variable, e.target.value)}
-                                      placeholder={`Value for ${variable}`}
-                                    />
-                                  )}
-                                </div>
-                              )
-                            })}
-                          </div>
-                          {selectedTemplate.header_type && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(selectedTemplate.header_type) && (
-                            <div className="space-y-2">
-                              <Label className="text-sm font-semibold">Media Header URL</Label>
-                              <Input
-                                type="url"
-                                value={headerMediaLink}
-                                onChange={(e) => setHeaderMediaLink(e.target.value)}
-                                placeholder="https://example.com/your-media.jpg"
-                              />
-                              <p className="text-xs text-[var(--text-muted)]">
-                                Required for {selectedTemplate.header_type.toLowerCase()} headers. Must be a publicly accessible URL.
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-[var(--text-muted)]">
-                          This template has no variables and will send the same message to all contacts.
-                        </p>
-                      )}
-
-                      {(selectedTemplate?.body || selectedTemplate?.header_text || selectedTemplate?.footer_text) && (
-                        <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--card-alt, var(--card))] p-4">
-                          <p className="text-sm font-semibold text-[var(--text)] mb-2">Preview</p>
-                          <div className="space-y-2">
-                            {selectedTemplate.header_text && (
-                              <p className="text-xs uppercase tracking-wide text-[var(--text-muted)]">
-                                {renderTemplateText(selectedTemplate.header_text, templateVariableSources, templateVariables, contacts)}
-                              </p>
-                            )}
-                            {selectedTemplate.header_type && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(selectedTemplate.header_type) && (
-                              <p className="text-xs text-[var(--text-muted)]">
-                                Media header ({selectedTemplate.header_type.toLowerCase()}): {headerMediaLink || 'No URL provided'}
-                              </p>
-                            )}
-                            {selectedTemplate.body && (
-                              <p className="text-sm whitespace-pre-wrap text-[var(--text)]">
-                                {renderTemplateText(selectedTemplate.body, templateVariableSources, templateVariables, contacts)}
-                              </p>
-                            )}
-                            {selectedTemplate.footer_text && (
-                              <p className="text-xs text-[var(--text-muted)]">
-                                {renderTemplateText(selectedTemplate.footer_text, templateVariableSources, templateVariables, contacts)}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )
-                })()}
+        if (formData.channel === 'email') {
+          return (
+            <div className="border rounded-xl border-[var(--border)] p-4 space-y-4">
+              <CardTitle className="text-xl">Email Configuration</CardTitle>
+              <div className="space-y-2">
+                <Label>Subject Line *</Label>
+                <Input
+                  type="text"
+                  name="subject"
+                  value={formData.subject}
+                  placeholder="e.g., Special Holiday Offer Just for You!"
+                  onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
+                />
               </div>
-            )}
-          </div>
-        ) : (
-          <div className="border rounded-xl border-[var(--border)] p-4 space-y-4">
-            <CardTitle className="text-xl">Email Configuration</CardTitle>
-            <div className="space-y-2">
-              <Label>Subject Line *</Label>
-              <Input
-                type="text"
-                name="subject"
-                value={formData.subject}
-                placeholder="e.g., Special Holiday Offer Just for You!"
-                onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <Label>Message *</Label>
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--card)]">
-                  <ReactQuill
-                    theme="snow"
-                    value={formData.message_content}
-                    onChange={(value) => setFormData(prev => ({ ...prev, message_content: value }))}
-                    placeholder="Write your email content..."
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <Label>Message *</Label>
+                  <div className="rounded-lg border border-[var(--border)] bg-[var(--card)]">
+                    <ReactQuill
+                      theme="snow"
+                      value={formData.message_content}
+                      onChange={(value) => setFormData(prev => ({ ...prev, message_content: value }))}
+                      placeholder="Write your email content..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Plain Text Fallback (optional)</Label>
+                    <textarea
+                      name="textBody"
+                      value={formData.textBody}
+                      onChange={(e) => setFormData(prev => ({ ...prev, textBody: e.target.value }))}
+                      placeholder="Optional plain text version"
+                      rows="3"
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-[var(--text)] placeholder:text-[var(--text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                    />
+                    <p className="text-xs text-[var(--text-muted)]">If left blank, we’ll generate text from your HTML.</p>
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Plain Text Fallback (optional)</Label>
-                  <textarea
-                    name="textBody"
-                    value={formData.textBody}
-                    onChange={(e) => setFormData(prev => ({ ...prev, textBody: e.target.value }))}
-                    placeholder="Optional plain text version"
-                    rows="3"
-                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-[var(--text)] placeholder:text-[var(--text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
-                  />
-                  <p className="text-xs text-[var(--text-muted)]">If left blank, we’ll generate text from your HTML.</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Preview</Label>
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3 space-y-3">
-                  <div>
-                    <p className="text-xs text-[var(--text-muted)]">Subject</p>
-                    <p className="text-sm text-[var(--text)] font-medium">{formData.subject || '(no subject)'}</p>
-                  </div>
-                  <div className="border border-dashed border-[var(--border)] rounded-lg p-3 min-h-[160px] bg-white text-[var(--text)]">
-                    {formData.message_content
-                      ? <div dangerouslySetInnerHTML={{ __html: formData.message_content }} />
-                      : <p className="text-sm text-[var(--text-muted)]"><em>Your email content will appear here.</em></p>}
+                  <Label>Preview</Label>
+                  <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3 space-y-3">
+                    <div>
+                      <p className="text-xs text-[var(--text-muted)]">Subject</p>
+                      <p className="text-sm text-[var(--text)] font-medium">{formData.subject || '(no subject)'}</p>
+                    </div>
+                    <div className="border border-dashed border-[var(--border)] rounded-lg p-3 min-h-[160px] bg-white text-[var(--text)]">
+                      {formData.message_content
+                        ? <div dangerouslySetInnerHTML={{ __html: formData.message_content }} />
+                        : <p className="text-sm text-[var(--text-muted)]"><em>Your email content will appear here.</em></p>}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          )
+        }
+
+        if (formData.channel === 'sms') {
+          return (
+            <div className="border rounded-xl border-[var(--border)] p-4 space-y-4">
+              <div>
+                <CardTitle className="text-xl">SMS Configuration</CardTitle>
+                <CardDescription>Send a plain-text SMS via Twilio</CardDescription>
+              </div>
+              <div className="space-y-2">
+                <Label>Message *</Label>
+                <textarea
+                  name="smsBody"
+                  value={formData.smsBody}
+                  onChange={handleInputChange}
+                  rows="6"
+                  placeholder="Type your SMS content (keep it concise)"
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-[var(--text)] placeholder:text-[var(--text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                />
+                <p className="text-xs text-[var(--text-muted)]">
+                  Character count: {formData.smsBody?.length || 0}
+                </p>
+              </div>
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
+                <p className="text-sm text-[var(--text-muted)] mb-1">Preview</p>
+                <p className="text-sm text-[var(--text)] whitespace-pre-wrap">
+                  {formData.smsBody || 'Type your message to preview it here.'}
+                </p>
+              </div>
+            </div>
+          )
+        }
+
+        return (
+          <Alert variant="warning">
+            Select a channel to continue.
+          </Alert>
         )
       case 3:
         return (
@@ -883,12 +956,12 @@ export default function CreateCampaignPage() {
   return (
     <AppShell
       title={isEditing ? 'Edit Campaign' : 'Create Campaign'}
-      subtitle={isEditing ? 'Update your WhatsApp or Email campaign' : 'Create a new WhatsApp or Email campaign'}
+      subtitle={isEditing ? 'Update your WhatsApp, Email, or SMS campaign' : 'Create a new WhatsApp, Email, or SMS campaign'}
     >
       <PageHeader
         icon={Sparkles}
         title={isEditing ? 'Edit your campaign' : 'Create your next campaign'}
-        description="Follow the guided steps to configure audience, content, and review before sending."
+        description="Follow the guided steps to configure audience, content, and review before sending on WhatsApp, Email, or SMS."
         helper={`${tags.length || 0} templates • ${contacts.length || 0} contacts`}
         actions={
           <div className="flex flex-wrap gap-3">

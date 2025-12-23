@@ -49,11 +49,24 @@ class TwilioSmsProvider extends MessagingProvider {
       }
 
       // Send via Twilio
-      const result = await this.client.messages.create({
-        from: fromNumber,
+      const messagingServiceSid =
+        this.config.messaging_service_sid || process.env.TWILIO_MESSAGING_SERVICE_SID || null;
+
+      const payload = {
         to: phone_number,
         body: content
-      });
+      };
+
+      if (messagingServiceSid) {
+        payload.messagingServiceSid = messagingServiceSid;
+      } else if (fromNumber) {
+        payload.from = fromNumber;
+      } else {
+        throw new Error('No messaging service sid or phone number configured for tenant');
+      }
+
+      console.log('[TwilioSmsProvider] sending message payload', payload);
+      const result = await this.client.messages.create(payload);
 
       return {
         success: true,

@@ -23,6 +23,7 @@ const masterSid = process.env.TWILIO_ACCOUNT_SID;
 const masterToken = process.env.TWILIO_AUTH_TOKEN;
 const defaultWebhook = process.env.TWILIO_WEBHOOK_URL || `${process.env.APP_URL || 'http://localhost:5173'}/webhooks/twilio`;
 const defaultPhone = process.env.TWILIO_PHONE_NUMBER || null;
+const defaultMessagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID || null;
 const phoneMapRaw = process.env.TWILIO_PHONE_MAP || '';
 
 if (!masterSid || !masterToken) {
@@ -87,7 +88,8 @@ for (const tenant of tenants) {
 
   const config = {
     phone_number: phoneNumber,
-    webhook_url: defaultWebhook
+    webhook_url: defaultWebhook,
+    messaging_service_sid: defaultMessagingServiceSid
   };
 
   upsert.run(uuidv4(), tenant.id, encryptedCredentials, JSON.stringify(config), today, today);

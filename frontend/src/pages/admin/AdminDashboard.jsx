@@ -19,6 +19,7 @@ import {
   Input,
   PrimaryAction,
   SecondaryAction,
+  Checkbox,
   DataTable
 } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
@@ -50,6 +51,7 @@ export const AdminDashboard = () => {
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState(null)
   const [updatingTenantId, setUpdatingTenantId] = useState(null)
+  const [updatingDemoTenantId, setUpdatingDemoTenantId] = useState(null)
 
   useEffect(() => {
     fetchData()
@@ -106,6 +108,28 @@ export const AdminDashboard = () => {
     }
   }
 
+  const handleDemoToggle = async (tenantId, nextValue) => {
+    try {
+      setUpdatingDemoTenantId(tenantId)
+      setError(null)
+      const response = await fetch(`/api/admin/tenants/${tenantId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ isDemo: nextValue })
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(payload.error || 'Failed to update tenant demo mode')
+      }
+      await fetchData()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setUpdatingDemoTenantId(null)
+    }
+  }
+
   const sortHeader = (label) => ({ column }) => (
     <Button
       variant="ghost"
@@ -132,6 +156,28 @@ export const AdminDashboard = () => {
         cell: ({ row }) => (
           <span className="text-sm text-[var(--text-muted)]">{row.original.plan_name || 'Standard'}</span>
         )
+      },
+      {
+        id: 'is_demo',
+        accessorFn: (tenant) => Boolean(tenant.is_demo),
+        header: sortHeader('Demo mode'),
+        enableHiding: false,
+        cell: ({ row }) => {
+          const tenant = row.original
+          const isDemo = Boolean(tenant.is_demo)
+          return (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={isDemo}
+                onCheckedChange={(value) => handleDemoToggle(tenant.id, value)}
+                disabled={updatingDemoTenantId === tenant.id}
+              />
+              <span className="text-xs uppercase text-[var(--text-muted)]">
+                {isDemo ? 'Demo' : 'Live'}
+              </span>
+            </div>
+          )
+        }
       },
       {
         accessorKey: 'user_count',
@@ -174,7 +220,7 @@ export const AdminDashboard = () => {
         )
       }
     ],
-    [handleStatusChange, updatingTenantId]
+    [handleStatusChange, updatingTenantId, handleDemoToggle, updatingDemoTenantId]
   )
 
   const rowActions = useMemo(

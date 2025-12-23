@@ -94,7 +94,11 @@ export default function CampaignsPage() {
     navigate(`/campaigns/${campaignId}`)
   }
 
-  const getChannelLabel = (channel) => (channel === 'whatsapp' ? '📱 WhatsApp' : '📧 Email')
+  const getChannelLabel = (channel) => {
+    if (channel === 'whatsapp') return '📱 WhatsApp'
+    if (channel === 'sms') return '💬 SMS'
+    return '📧 Email'
+  }
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Never'
@@ -195,7 +199,7 @@ export default function CampaignsPage() {
   ]
 
   return (
-    <AppShell hideTitleBlock title="Campaigns" subtitle="Create and manage WhatsApp and Email campaigns">
+    <AppShell hideTitleBlock title="Campaigns" subtitle="Create and manage WhatsApp, Email, and SMS campaigns">
       <div className="space-y-6">
         <PageHeader
           icon={Sparkles}

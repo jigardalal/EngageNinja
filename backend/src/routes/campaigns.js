@@ -6,12 +6,105 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const metricsEmitter = require('../services/metricsEmitter');
-const { getWhatsAppCredentials, getEmailCredentials } = require('../services/messageQueue');
 const { requireMember, requireAdmin } = require('../middleware/rbac');
 const { logAudit, AUDIT_ACTIONS } = require('../utils/audit');
 const { canTenantSendCampaigns } = require('../utils/subscriptionChecks');
+
+const decryptCredentials = (encryptedData) => {
+  if (!encryptedData) return null;
+  try {
+    const encryptionKey = process.env.ENCRYPTION_KEY || 'default-dev-key-change-in-production';
+    const key = crypto.createHash('sha256').update(encryptionKey).digest().subarray(0, 24);
+    const iv = Buffer.alloc(16, 0);
+    const decipher = crypto.createDecipheriv('aes-192-cbc', key, iv);
+    let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return JSON.parse(decrypted);
+  } catch (err) {
+    console.warn('Decrypt credentials failed:', err.message);
+    return null;
+  }
+};
+
+const normalizeWhatsAppCredentials = (creds = {}) => {
+  const access = creds.access_token || creds.accessToken || '';
+  const phone = creds.phone_number_id || creds.phoneNumberId || '';
+  const business = creds.business_account_id || creds.businessAccountId || '';
+
+  return {
+    access_token: access ? String(access).trim() : '',
+    phone_number_id: phone ? String(phone).trim() : '',
+    business_account_id: business ? String(business).trim() : null
+  };
+};
+
+const getWhatsAppCredentials = (tenantId) => {
+  const row = db.prepare(`
+    SELECT credentials_encrypted, phone_number_id, business_account_id
+    FROM tenant_channel_settings
+    WHERE tenant_id = ? AND channel = 'whatsapp'
+  `).get(tenantId);
+
+  if (!row) return null;
+
+  let decrypted = {};
+  if (row.credentials_encrypted) {
+    decrypted = decryptCredentials(row.credentials_encrypted) || {};
+  }
+
+  const normalized = normalizeWhatsAppCredentials(decrypted);
+  return {
+    access_token: normalized.access_token,
+    phone_number_id: normalized.phone_number_id || row.phone_number_id || null,
+    business_account_id: normalized.business_account_id || row.business_account_id || null
+  };
+};
+
+const getEmailCredentials = (tenantId) => {
+  const row = db.prepare(`
+    SELECT credentials_encrypted FROM tenant_channel_settings
+    WHERE tenant_id = ? AND channel = ?
+  `).get(tenantId, 'email');
+
+  if (!row?.credentials_encrypted) return null;
+
+  return decryptCredentials(row.credentials_encrypted);
+};
+
+const getSmsConfig = (tenantId) => {
+  const row = db.prepare(`
+    SELECT provider, provider_config_json, is_enabled
+    FROM tenant_channel_credentials_v2
+    WHERE tenant_id = ? AND channel = ?
+  `).get(tenantId, 'sms');
+
+  if (!row || row.is_enabled !== 1) return null;
+
+  let config = {};
+  if (row.provider_config_json) {
+    try {
+      config = JSON.parse(row.provider_config_json);
+    } catch (err) {
+      console.warn('Unable to parse SMS provider config:', err.message);
+    }
+  }
+
+  const phoneNumber = config.phone_number ? String(config.phone_number).trim() : null;
+  const messagingServiceSid = config.messaging_service_sid
+    ? String(config.messaging_service_sid).trim()
+    : process.env.TWILIO_MESSAGING_SERVICE_SID || null;
+  if (!phoneNumber && !messagingServiceSid) return null;
+
+  return {
+    provider: row.provider,
+    phone_number: phoneNumber,
+    webhook_url: config.webhook_url ? String(config.webhook_url).trim() : null,
+    messaging_service_sid: messagingServiceSid
+  };
+};
 
 // ===== MIDDLEWARE =====
 
@@ -278,6 +371,24 @@ router.post('/', requireAuth, validateTenantAccess, (req, res) => {
       }
     }
 
+    if (channel === 'sms') {
+      const smsConfig = getSmsConfig(req.tenantId);
+      if (!smsConfig) {
+        return res.status(400).json({
+          error: 'SMS Not Configured',
+          message: 'Connect a Twilio sender number in Settings before creating an SMS campaign',
+          status: 'error'
+        });
+      }
+      if (!message_content || typeof message_content !== 'string' || !message_content.trim()) {
+        return res.status(400).json({
+          error: 'Validation Error',
+          message: 'SMS message content is required',
+          status: 'error'
+        });
+      }
+    }
+
     let normalizedMessageContent = message_content || null;
 
     if (channel === 'email') {
@@ -320,6 +431,10 @@ router.post('/', requireAuth, validateTenantAccess, (req, res) => {
         htmlBody,
         textBody
       });
+    }
+
+    if (channel === 'sms') {
+      normalizedMessageContent = String(message_content || '').trim();
     }
 
     if (channel === 'whatsapp' && message_content && typeof message_content !== 'string') {
@@ -566,6 +681,25 @@ router.put('/:id', requireAuth, validateTenantAccess, (req, res) => {
         htmlBody,
         textBody
       });
+    }
+
+    if (channel === 'sms') {
+      const smsConfig = getSmsConfig(req.tenantId);
+      if (!smsConfig) {
+        return res.status(400).json({
+          error: 'SMS Not Configured',
+          message: 'Connect a Twilio sender number in Settings before editing an SMS campaign',
+          status: 'error'
+        });
+      }
+      if (!message_content || typeof message_content !== 'string' || !message_content.trim()) {
+        return res.status(400).json({
+          error: 'Validation Error',
+          message: 'SMS message content is required',
+          status: 'error'
+        });
+      }
+      normalizedMessageContent = String(message_content).trim();
     }
 
     if (channel === 'whatsapp' && message_content && typeof message_content !== 'string') {
@@ -1186,6 +1320,23 @@ router.post('/:id/send', requireAuth, validateTenantAccess, requireMember, (req,
         });
       }
     }
+    else if (campaign.channel === 'sms') {
+      const smsConfig = getSmsConfig(req.tenantId);
+      if (!smsConfig) {
+        return res.status(400).json({
+          error: 'SMS Not Configured',
+          message: 'Connect a Twilio sender number in Settings before sending an SMS campaign',
+          status: 'error'
+        });
+      }
+      if (!campaign.message_content || !String(campaign.message_content).trim()) {
+        return res.status(400).json({
+          error: 'Validation Error',
+          message: 'SMS body is required before sending',
+          status: 'error'
+        });
+      }
+    }
 
     // Get user's plan
     const tenant = db.prepare('SELECT plan_id FROM tenants WHERE id = ?').get(req.tenantId);
@@ -1218,7 +1369,16 @@ router.post('/:id/send', requireAuth, validateTenantAccess, requireMember, (req,
 
     // Determine message type and get current usage
     let currentUsage = 0;
-    let messageType = campaign.channel === 'whatsapp' ? 'whatsapp_messages_sent' : 'email_messages_sent';
+    let messageType;
+    if (campaign.channel === 'whatsapp') {
+      messageType = 'whatsapp_messages_sent';
+    } else if (campaign.channel === 'email') {
+      messageType = 'email_messages_sent';
+    } else if (campaign.channel === 'sms') {
+      messageType = 'sms_sent';
+    } else {
+      messageType = 'whatsapp_messages_sent';
+    }
 
     // Use override limit if set, otherwise use plan default
     let planLimit;
@@ -1226,6 +1386,8 @@ router.post('/:id/send', requireAuth, validateTenantAccess, requireMember, (req,
       planLimit = overrides?.wa_messages_override ?? plan.whatsapp_messages_per_month;
     } else if (campaign.channel === 'email') {
       planLimit = overrides?.emails_override ?? plan.email_messages_per_month;
+    } else if (campaign.channel === 'sms') {
+      planLimit = overrides?.sms_override ?? plan.sms_messages_per_month;
     } else {
       planLimit = 0;
     }
@@ -1234,13 +1396,16 @@ router.post('/:id/send', requireAuth, validateTenantAccess, requireMember, (req,
       currentUsage = usage[messageType] || 0;
     }
 
+
     // Check plan limits (hard cap enforcement)
-    if (currentUsage + audienceCount > planLimit) {
+    const limitForComparison = planLimit > 0 ? planLimit : Number.POSITIVE_INFINITY;
+
+    if (currentUsage + audienceCount > limitForComparison) {
       return res.status(403).json({
         error: 'Usage Limit Exceeded',
-        message: `You've used ${currentUsage} of ${planLimit} ${campaign.channel} messages this month. Upgrade your plan to send more.`,
+        message: `You've used ${currentUsage} of ${limitForComparison} ${campaign.channel} messages this month. Upgrade your plan to send more.`,
         current: currentUsage,
-        limit: planLimit,
+        limit: Number.isFinite(limitForComparison) ? limitForComparison : null,
         remaining: Math.max(0, planLimit - currentUsage),
         requested: audienceCount,
         status: 'error'
@@ -1267,7 +1432,11 @@ router.post('/:id/send', requireAuth, validateTenantAccess, requireMember, (req,
         campaign.id,
         contact.id,
         campaign.channel,
-        campaign.channel === 'whatsapp' ? 'whatsapp_cloud' : 'ses',
+        campaign.channel === 'whatsapp'
+          ? 'whatsapp_cloud'
+          : campaign.channel === 'email'
+            ? 'ses'
+            : 'twilio',
         'queued',
         1,
         now_iso,
@@ -1293,8 +1462,8 @@ router.post('/:id/send', requireAuth, validateTenantAccess, requireMember, (req,
       const counterStmt = db.prepare(`
         INSERT INTO usage_counters (
           id, tenant_id, year_month, whatsapp_messages_sent,
-          email_messages_sent, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?)
+          email_messages_sent, sms_sent, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
       const counterId = uuidv4();
       counterStmt.run(
@@ -1303,6 +1472,7 @@ router.post('/:id/send', requireAuth, validateTenantAccess, requireMember, (req,
         yearMonth,
         campaign.channel === 'whatsapp' ? audienceCount : 0,
         campaign.channel === 'email' ? audienceCount : 0,
+        campaign.channel === 'sms' ? audienceCount : 0,
         now_iso
       );
     }
@@ -1474,6 +1644,23 @@ router.post('/:id/resend', requireAuth, validateTenantAccess, requireMember, (re
         });
       }
     }
+    else if (campaign.channel === 'sms') {
+      const smsConfig = getSmsConfig(req.tenantId);
+      if (!smsConfig) {
+        return res.status(400).json({
+          error: 'SMS Not Configured',
+          message: 'Connect a Twilio sender number in Settings before resending an SMS campaign',
+          status: 'error'
+        });
+      }
+      if (!campaign.message_content || !String(campaign.message_content).trim()) {
+        return res.status(400).json({
+          error: 'Validation Error',
+          message: 'SMS body is required before resending',
+          status: 'error'
+        });
+      }
+    }
 
     // Get non-readers from original campaign
     // Non-readers = delivered but not read
@@ -1554,6 +1741,20 @@ router.post('/:id/resend', requireAuth, validateTenantAccess, requireMember, (re
           status: 'error'
         });
       }
+    } else if (campaign.channel === 'sms' && usage) {
+      currentUsage = usage.sms_sent || 0;
+      const smsLimit = overrides?.sms_override ?? plan.sms_messages_per_month;
+      if (currentUsage + nonReaders.length > smsLimit) {
+        return res.status(403).json({
+          error: 'Usage Limit Exceeded',
+          message: `Resending would exceed your monthly SMS limit. You've used ${currentUsage} of ${smsLimit} messages. ${Math.max(0, smsLimit - currentUsage)} remaining.`,
+          current: currentUsage,
+          limit: smsLimit,
+          remaining: Math.max(0, smsLimit - currentUsage),
+          requested: nonReaders.length,
+          status: 'error'
+        });
+      }
     }
 
     // Create new campaign as resend
@@ -1601,7 +1802,11 @@ router.post('/:id/resend', requireAuth, validateTenantAccess, requireMember, (re
         resendCampaignId,
         record.contact_id,
         campaign.channel,
-        campaign.channel === 'whatsapp' ? 'whatsapp_cloud' : 'ses',
+        campaign.channel === 'whatsapp'
+          ? 'whatsapp_cloud'
+          : campaign.channel === 'email'
+            ? 'ses'
+            : 'twilio',
         'queued',
         1,
         now_iso,
@@ -1610,7 +1815,16 @@ router.post('/:id/resend', requireAuth, validateTenantAccess, requireMember, (re
     }
 
     // Update usage counter
-    const messageType = campaign.channel === 'whatsapp' ? 'whatsapp_messages_sent' : 'email_messages_sent';
+    let messageType;
+    if (campaign.channel === 'whatsapp') {
+      messageType = 'whatsapp_messages_sent';
+    } else if (campaign.channel === 'email') {
+      messageType = 'email_messages_sent';
+    } else if (campaign.channel === 'sms') {
+      messageType = 'sms_sent';
+    } else {
+      messageType = 'whatsapp_messages_sent';
+    }
     if (usage) {
       db.prepare(`
         UPDATE usage_counters
@@ -1622,14 +1836,15 @@ router.post('/:id/resend', requireAuth, validateTenantAccess, requireMember, (re
       db.prepare(`
         INSERT INTO usage_counters (
           id, tenant_id, year_month, whatsapp_messages_sent,
-          email_messages_sent, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?)
+          email_messages_sent, sms_sent, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
       `).run(
         counterId,
         req.tenantId,
         yearMonth,
         campaign.channel === 'whatsapp' ? nonReaders.length : 0,
         campaign.channel === 'email' ? nonReaders.length : 0,
+        campaign.channel === 'sms' ? nonReaders.length : 0,
         now_iso
       );
     }

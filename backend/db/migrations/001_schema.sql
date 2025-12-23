@@ -124,6 +124,8 @@ CREATE TABLE IF NOT EXISTS campaigns (
   template_id TEXT,
   audience_filters TEXT,
   message_content TEXT,
+  from_number TEXT,
+  from_email TEXT,
   status TEXT DEFAULT 'draft',
   sent_by TEXT,
   sent_at TIMESTAMP,
@@ -170,6 +172,7 @@ CREATE TABLE IF NOT EXISTS message_status_events (
   new_status TEXT,
   event_timestamp TIMESTAMP,
   webhook_received_at TIMESTAMP,
+  status_reason TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (message_id) REFERENCES messages(id)
 );
