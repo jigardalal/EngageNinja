@@ -661,7 +661,7 @@ function copyGlobalTagsToTenant(tenantUuid) {
       tenant_id: tenantId.demo,
       channel: 'sms',
       provider: 'twilio',
-      credentials_json_encrypted: twilioSmsCreds,
+      credentials_encrypted: twilioSmsCreds,
       is_enabled: 1,
       is_verified: 1,
       webhook_secret: 'twilio-demo-secret'
@@ -670,7 +670,7 @@ function copyGlobalTagsToTenant(tenantUuid) {
       tenant_id: tenantId.demo,
       channel: 'email',
       provider: 'aws_ses',
-      credentials_json_encrypted: awsSesCreds,
+      credentials_encrypted: awsSesCreds,
       is_enabled: 1,
       is_verified: 1,
       webhook_secret: 'aws-sns-secret'
@@ -678,13 +678,13 @@ function copyGlobalTagsToTenant(tenantUuid) {
   ];
 
   for (const cred of credentialsList) {
-    const existing = db.prepare('SELECT id FROM tenant_channel_credentials_v2 WHERE tenant_id = ? AND channel = ?').get(cred.tenant_id, cred.channel);
+    const existing = db.prepare('SELECT id FROM tenant_channel_settings WHERE tenant_id = ? AND channel = ?').get(cred.tenant_id, cred.channel);
     if (!existing) {
       const webhookSecretEncrypted = encryptCredentials(cred.webhook_secret);
 
       db.prepare(`
-        INSERT INTO tenant_channel_credentials_v2
-        (id, tenant_id, channel, provider, credentials_json_encrypted, is_enabled, is_verified, verified_at,
+        INSERT INTO tenant_channel_settings
+        (id, tenant_id, channel, provider, credentials_encrypted, is_enabled, is_verified, verified_at,
          webhook_secret_encrypted, webhook_url, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
@@ -692,7 +692,7 @@ function copyGlobalTagsToTenant(tenantUuid) {
         cred.tenant_id,
         cred.channel,
         cred.provider,
-        cred.credentials_json_encrypted,
+        cred.credentials_encrypted,
         cred.is_enabled,
         cred.is_verified,
         cred.is_verified ? now : null,

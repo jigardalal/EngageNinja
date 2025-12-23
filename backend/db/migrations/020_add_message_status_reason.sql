@@ -1,1 +1,1 @@
-ALTER TABLE message_status_events ADD COLUMN status_reason TEXT;
+-- Column status_reason already exists in schema; migration left empty for compatibility.

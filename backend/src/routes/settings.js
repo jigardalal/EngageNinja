@@ -294,11 +294,13 @@ router.get('/channels', requireAuth, (req, res) => {
       whatsappBusinessAccountId = whatsappChannel?.business_account_id || null;
     }
 
-    const smsChannel = db.prepare(
-      `SELECT id, provider, is_enabled, provider_config_json, updated_at
-       FROM tenant_channel_credentials_v2
-       WHERE tenant_id = ? AND channel = ?`
-    ).get(tenantId, 'sms');
+    const smsChannel = db.prepare(`
+      SELECT id, provider, is_connected, connected_at, is_enabled, is_verified,
+        verified_at, provider_config_json, webhook_url, phone_number, messaging_service_sid,
+        updated_at
+      FROM tenant_channel_settings
+      WHERE tenant_id = ? AND channel = ?
+    `).get(tenantId, 'sms');
 
     const smsConfig = smsChannel ? (() => {
       let parsed = {};
@@ -311,16 +313,24 @@ router.get('/channels', requireAuth, (req, res) => {
       }
       return {
         provider: smsChannel.provider,
-        is_connected: smsChannel.is_enabled === 1,
-        phone_number: parsed.phone_number || null,
-        webhook_url: parsed.webhook_url || null,
+        is_connected: Boolean(smsChannel.is_connected),
+        is_enabled: Boolean(smsChannel.is_enabled),
+        is_verified: Boolean(smsChannel.is_verified),
+        phone_number: smsChannel.phone_number || parsed.phone_number || null,
+        webhook_url: smsChannel.webhook_url || parsed.webhook_url || null,
+        messaging_service_sid: smsChannel.messaging_service_sid || parsed.messaging_service_sid || null,
+        verified_at: smsChannel.verified_at,
         updated_at: smsChannel.updated_at
       };
     })() : {
       provider: null,
       is_connected: false,
+      is_enabled: false,
+      is_verified: false,
       phone_number: null,
       webhook_url: null,
+      messaging_service_sid: null,
+      verified_at: null,
       updated_at: null
     };
 
@@ -694,7 +704,7 @@ router.post('/channels/sms', requireAuth, requireAdmin, (req, res) => {
     }
 
     const channelRow = db.prepare(
-      'SELECT id, provider_config_json FROM tenant_channel_credentials_v2 WHERE tenant_id = ? AND channel = ?'
+      'SELECT id, provider_config_json, webhook_url, phone_number, messaging_service_sid FROM tenant_channel_settings WHERE tenant_id = ? AND channel = ?'
     ).get(tenantId, 'sms');
 
     if (!channelRow) {
@@ -721,10 +731,21 @@ router.post('/channels/sms', requireAuth, requireAdmin, (req, res) => {
 
     const now = new Date().toISOString();
     db.prepare(
-      `UPDATE tenant_channel_credentials_v2
-       SET provider_config_json = ?, is_enabled = 1, updated_at = ?
+      `UPDATE tenant_channel_settings
+       SET provider_config_json = ?, is_enabled = 1,
+           webhook_url = ?,
+           phone_number = ?,
+           messaging_service_sid = ?,
+           updated_at = ?
        WHERE id = ?`
-    ).run(JSON.stringify(config), now, channelRow.id);
+    ).run(
+      JSON.stringify(config),
+      webhookUrl || config.webhook_url || channelRow.webhook_url,
+      phoneNumber,
+      config.messaging_service_sid || channelRow.messaging_service_sid || null,
+      now,
+      channelRow.id
+    );
 
     res.json({
       message: 'SMS settings saved',

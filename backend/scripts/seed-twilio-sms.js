@@ -2,7 +2,7 @@
  * Seed Twilio SMS credentials for all tenants.
  *
  * Reads the master Twilio account SID/auth token from environment variables,
- * encrypts them, and upserts a row in tenant_channel_credentials_v2 for each tenant.
+ * encrypts them, and upserts a row in tenant_channel_settings for each tenant.
  * Each tenant can supply its own phone number via TWILIO_PHONE_MAP or a default number.
  *
  * Usage:
@@ -67,13 +67,21 @@ if (!tenants.length) {
 const encryptedCredentials = encryptCredentials({ accountSid: masterSid, authToken: masterToken });
 
 const upsert = db.prepare(`
-  INSERT INTO tenant_channel_credentials_v2
-    (id, tenant_id, channel, provider, credentials_json_encrypted, provider_config_json, is_enabled, is_verified, created_at, updated_at)
-  VALUES (?, ?, 'sms', 'twilio', ?, ?, 1, 1, ?, ?)
+  INSERT INTO tenant_channel_settings
+    (id, tenant_id, channel, provider, credentials_encrypted, provider_config_json,
+     is_connected, is_enabled, is_verified, webhook_url, phone_number, messaging_service_sid,
+     created_at, updated_at)
+  VALUES (?, ?, 'sms', 'twilio', ?, ?, 0, 1, 1, ?, ?, ?, ?, ?)
   ON CONFLICT(tenant_id, channel) DO UPDATE SET
-    credentials_json_encrypted = excluded.credentials_json_encrypted,
+    provider = excluded.provider,
+    credentials_encrypted = excluded.credentials_encrypted,
     provider_config_json = excluded.provider_config_json,
-    is_enabled = 1,
+    is_connected = excluded.is_connected,
+    is_enabled = excluded.is_enabled,
+    is_verified = excluded.is_verified,
+    webhook_url = excluded.webhook_url,
+    phone_number = excluded.phone_number,
+    messaging_service_sid = excluded.messaging_service_sid,
     updated_at = excluded.updated_at
 `);
 
@@ -92,7 +100,17 @@ for (const tenant of tenants) {
     messaging_service_sid: defaultMessagingServiceSid
   };
 
-  upsert.run(uuidv4(), tenant.id, encryptedCredentials, JSON.stringify(config), today, today);
+  upsert.run(
+    uuidv4(),
+    tenant.id,
+    encryptedCredentials,
+    JSON.stringify(config),
+    defaultWebhook,
+    phoneNumber,
+    defaultMessagingServiceSid,
+    today,
+    today
+  );
   console.log(`Seeded Twilio SMS config for tenant ${tenant.id} (${phoneNumber})`);
 }
 

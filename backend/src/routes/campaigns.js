@@ -76,8 +76,8 @@ const getEmailCredentials = (tenantId) => {
 
 const getSmsConfig = (tenantId) => {
   const row = db.prepare(`
-    SELECT provider, provider_config_json, is_enabled
-    FROM tenant_channel_credentials_v2
+    SELECT provider, provider_config_json, webhook_url, phone_number, messaging_service_sid, is_enabled
+    FROM tenant_channel_settings
     WHERE tenant_id = ? AND channel = ?
   `).get(tenantId, 'sms');
 
@@ -92,16 +92,21 @@ const getSmsConfig = (tenantId) => {
     }
   }
 
-  const phoneNumber = config.phone_number ? String(config.phone_number).trim() : null;
-  const messagingServiceSid = config.messaging_service_sid
-    ? String(config.messaging_service_sid).trim()
-    : process.env.TWILIO_MESSAGING_SERVICE_SID || null;
+  const phoneNumber = (row.phone_number || config.phone_number)
+    ? String(row.phone_number || config.phone_number).trim()
+    : null;
+  const messagingServiceSid = row.messaging_service_sid
+    ? String(row.messaging_service_sid).trim()
+    : config.messaging_service_sid
+      ? String(config.messaging_service_sid).trim()
+      : process.env.TWILIO_MESSAGING_SERVICE_SID || null;
+
   if (!phoneNumber && !messagingServiceSid) return null;
 
   return {
     provider: row.provider,
     phone_number: phoneNumber,
-    webhook_url: config.webhook_url ? String(config.webhook_url).trim() : null,
+    webhook_url: row.webhook_url || config.webhook_url || null,
     messaging_service_sid: messagingServiceSid
   };
 };

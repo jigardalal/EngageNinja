@@ -68,8 +68,8 @@ async function getProvider(tenantId, channel) {
 
   // 3. Fetch channel credentials
   const creds = db.prepare(`
-    SELECT provider, credentials_json_encrypted, provider_config_json
-    FROM tenant_channel_credentials_v2
+    SELECT provider, credentials_encrypted, provider_config_json, webhook_url, phone_number, messaging_service_sid
+    FROM tenant_channel_settings
     WHERE tenant_id = ? AND channel = ?
   `).get(tenantId, channel);
 
@@ -78,8 +78,22 @@ async function getProvider(tenantId, channel) {
   }
 
   // 4. Decrypt credentials
-  const decrypted = decryptCredentials(creds.credentials_json_encrypted);
-  const config = creds.provider_config_json ? JSON.parse(creds.provider_config_json) : {};
+  const decrypted = decryptCredentials(creds.credentials_encrypted);
+  let parsedConfig = {};
+  if (creds.provider_config_json) {
+    try {
+      parsedConfig = JSON.parse(creds.provider_config_json);
+    } catch (error) {
+      console.warn('Unable to parse provider_config_json:', error.message);
+      parsedConfig = {};
+    }
+  }
+  const config = {
+    ...parsedConfig,
+    webhook_url: creds.webhook_url || parsedConfig.webhook_url || null,
+    phone_number: creds.phone_number || parsedConfig.phone_number || null,
+    messaging_service_sid: creds.messaging_service_sid || parsedConfig.messaging_service_sid || null
+  };
 
   // 5. Instantiate appropriate provider
   switch (creds.provider) {

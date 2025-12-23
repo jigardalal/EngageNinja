@@ -35,12 +35,12 @@ describe('Messaging Provider Layer', () => {
         is_demo INTEGER DEFAULT 0
       );
 
-      CREATE TABLE tenant_channel_credentials_v2 (
+      CREATE TABLE tenant_channel_settings (
         id TEXT PRIMARY KEY,
         tenant_id TEXT,
         channel TEXT,
         provider TEXT,
-        credentials_json_encrypted TEXT,
+        credentials_encrypted TEXT,
         provider_config_json TEXT,
         webhook_url TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
